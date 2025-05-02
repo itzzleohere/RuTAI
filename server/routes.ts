@@ -83,25 +83,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     path: '/ws',
     // Increase the ping timeout to maintain connections longer
     clientTracking: true,
-    // Ping interval of 30 seconds to keep connections alive
+    // Set a longer ping timeout for intermittent connections
+    pingTimeout: 60000, // 60 seconds
+    // Set a small ping interval to detect dead connections faster
+    pingInterval: 25000, // 25 seconds
+    // Enable compression for efficiency in limited bandwidth scenarios
     perMessageDeflate: {
       zlibDeflateOptions: {
-        // See zlib defaults.
+        // Optimize for mobile connections
         chunkSize: 1024,
         memLevel: 7,
-        level: 3
+        level: 3 // Balance between speed and compression ratio
       },
       zlibInflateOptions: {
         chunkSize: 10 * 1024
       },
-      // Below 10 should be good enough for most cases
-      concurrencyLimit: 10,
-      // Other options settable:
-      clientNoContextTakeover: true, // Defaults to negotiated value.
-      serverNoContextTakeover: true, // Defaults to negotiated value.
-      serverMaxWindowBits: 10, // Defaults to negotiated value.
-      // Below options specified as default values.
-      threshold: 1024 // Size (in bytes) below which messages should not be compressed.
+      // Limit concurrent compression to avoid overloading
+      concurrencyLimit: 5,
+      // Take over compression context to improve efficiency
+      clientNoContextTakeover: false, 
+      serverNoContextTakeover: false,
+      // More compatible window bits setting
+      serverMaxWindowBits: 15,
+      // Threshold below which compression is skipped (for small messages)
+      threshold: 512 // Smaller threshold to compress more messages
     }
   });
   
@@ -117,37 +122,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const connectedClients: Map<string, ClientInfo> = new Map();
   const userIdToConnectionId: Map<string, string> = new Map();
   
-  // Heartbeat detection to clean up dead connections
-  const HEARTBEAT_INTERVAL = 30000; // 30 seconds
-  const CONNECTION_TIMEOUT = 70000;  // 70 seconds without activity = dead connection
+  // Heartbeat detection to clean up dead connections with more aggressive timeouts
+  const HEARTBEAT_INTERVAL = 20000; // 20 seconds
+  const PING_INTERVAL = 15000; // 15 seconds
+  const CONNECTION_TIMEOUT = 60000;  // 60 seconds without activity = dead connection
   
-  // Set up interval to check for dead connections
+  // Improved connection state tracking
+  const connectionStates: Map<string, { 
+    lastPing: number, 
+    pingsSent: number,
+    pingsReceived: number,
+    pingAttempts: number,
+    lastActivity: number 
+  }> = new Map();
+  
+  // Set up interval to check for dead connections and send pings
   const heartbeatInterval = setInterval(() => {
     const now = Date.now();
     
     // Manually iterate over the Map to avoid TypeScript issues
     connectedClients.forEach((clientInfo, clientId) => {
+      // Get or create connection state
+      let connectionState = connectionStates.get(clientId);
+      if (!connectionState) {
+        connectionState = { 
+          lastPing: now, 
+          pingsSent: 0,
+          pingsReceived: 0,
+          pingAttempts: 0,
+          lastActivity: clientInfo.lastActive
+        };
+        connectionStates.set(clientId, connectionState);
+      }
+      
       // If the client hasn't been active in CONNECTION_TIMEOUT milliseconds, close the connection
       if (now - clientInfo.lastActive > CONNECTION_TIMEOUT) {
-        console.log(`Connection ${clientId} timed out, closing`);
+        console.log(`Connection ${clientId} timed out (no activity for ${(now - clientInfo.lastActive)/1000}s), closing`);
         try {
           if (clientInfo.socket.readyState === WebSocket.OPEN) {
-            clientInfo.socket.terminate();
-          }
-          connectedClients.delete(clientId);
-          
-          // Also clean up the userIdToConnectionId mapping
-          if (clientInfo.userId) {
-            userIdToConnectionId.delete(clientInfo.userId);
+            // Send a close frame with status code 1000 (normal closure) before terminating
+            clientInfo.socket.close(1000, "Connection timeout");
+            
+            // Give it a moment to send the close frame before forceful termination
+            setTimeout(() => {
+              if (connectedClients.has(clientId)) {
+                clientInfo.socket.terminate();
+                connectedClients.delete(clientId);
+                connectionStates.delete(clientId);
+                
+                // Also clean up the userIdToConnectionId mapping
+                if (clientInfo.userId) {
+                  userIdToConnectionId.delete(clientInfo.userId);
+                }
+              }
+            }, 500);
+          } else {
+            // If already closed or closing, just clean up
+            connectedClients.delete(clientId);
+            connectionStates.delete(clientId);
+            
+            // Also clean up the userIdToConnectionId mapping
+            if (clientInfo.userId) {
+              userIdToConnectionId.delete(clientInfo.userId);
+            }
           }
         } catch (error) {
           console.error(`Error closing timed out connection ${clientId}:`, error);
+          // Still attempt to clean up
+          connectedClients.delete(clientId);
+          connectionStates.delete(clientId);
+          if (clientInfo.userId) {
+            userIdToConnectionId.delete(clientInfo.userId);
+          }
         }
       }
-      // Send a ping to keep the connection alive
-      else if (clientInfo.socket.readyState === WebSocket.OPEN) {
+      // Send pings regularly to keep the connection alive and detect dead connections early
+      else if (clientInfo.socket.readyState === WebSocket.OPEN && now - connectionState.lastPing > PING_INTERVAL) {
         try {
           clientInfo.socket.ping();
+          connectionState.lastPing = now;
+          connectionState.pingsSent++;
+          connectionState.pingAttempts++;
+          
+          // Log ping statistics periodically
+          if (connectionState.pingAttempts % 10 === 0) {
+            console.log(`Connection ${clientId} ping stats - sent: ${connectionState.pingsSent}, received: ${connectionState.pingsReceived}, success rate: ${Math.round((connectionState.pingsReceived/connectionState.pingsSent) * 100)}%`);
+          }
         } catch (error) {
           console.error(`Error sending ping to client ${clientId}:`, error);
         }
@@ -186,11 +246,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     
-    // Update last active timestamp on pong responses
+    // Update last active timestamp and track pong responses for connection health
     ws.on('pong', () => {
       const clientInfo = connectedClients.get(clientId);
       if (clientInfo) {
         clientInfo.lastActive = Date.now();
+        
+        // Update ping stats
+        const connectionState = connectionStates.get(clientId);
+        if (connectionState) {
+          connectionState.lastActivity = Date.now();
+          connectionState.pingsReceived++;
+        }
       }
     });
 
