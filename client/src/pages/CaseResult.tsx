@@ -208,21 +208,58 @@ export default function CaseResult() {
           </div>
         </div>
 
-        {/* Recommended Actions */}
-        {caseData.recommendations && caseData.recommendations.length > 0 && (
+        {/* Recommended AI Actions */}
+        {caseData.recommendations && caseData.recommendations.length > 0 && Array.isArray(caseData.recommendations) && (
           <div className="mb-6">
             <h3 className="font-medium mb-3">{t('caseResult.recommendedActions')}</h3>
             <ol className="space-y-2 pl-5 list-decimal">
-              {caseData.recommendations.map((recommendation: any, index) => (
-                <li key={index} className="text-sm">
-                  {typeof recommendation === 'string'
-                    ? recommendation
-                    : recommendation && typeof recommendation === 'object' && 'text' in recommendation
-                      ? recommendation.text
-                      : 'Unknown recommendation'}
-                </li>
-              ))}
+              {caseData.recommendations
+                .filter((rec: any) => {
+                  // Filter for AI-generated recommendations (which are simple strings or don't have timestamps)
+                  return typeof rec === 'string' || !rec.createdAt;
+                })
+                .map((recommendation: any, index) => (
+                  <li key={index} className="text-sm">
+                    {typeof recommendation === 'string'
+                      ? recommendation
+                      : recommendation && typeof recommendation === 'object' && 'text' in recommendation
+                        ? recommendation.text
+                        : 'Unknown recommendation'}
+                  </li>
+                ))}
             </ol>
+          </div>
+        )}
+        
+        {/* Case Activity History */}
+        {caseData.recommendations && caseData.recommendations.length > 0 && Array.isArray(caseData.recommendations) && (
+          <div className="mb-6">
+            <h3 className="font-medium mb-3">{t('caseResult.caseHistory') || "Case History"}</h3>
+            <div className="border rounded-lg overflow-hidden">
+              <ul className="divide-y">
+                {caseData.recommendations
+                  .filter((rec: any) => {
+                    // Only include case activity entries (which have timestamps)
+                    return rec && typeof rec === 'object' && rec.createdAt;
+                  })
+                  .sort((a: any, b: any) => {
+                    // Sort by createdAt timestamp (newest first)
+                    const dateA = new Date(a.createdAt).getTime();
+                    const dateB = new Date(b.createdAt).getTime();
+                    return dateB - dateA;
+                  })
+                  .map((recommendation: any, index) => (
+                    <li key={index} className="p-3 bg-gray-50">
+                      <div className="flex items-start justify-between">
+                        <div className="text-sm">{recommendation.text}</div>
+                        <div className="text-xs text-gray-500 ml-2">
+                          {getTimeAgo(recommendation.createdAt)}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+              </ul>
+            </div>
           </div>
         )}
 

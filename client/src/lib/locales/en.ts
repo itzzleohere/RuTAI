@@ -82,6 +82,7 @@ export default {
     aiReasoning: "AI Reasoning",
     keyIndicators: "Key Clinical Indicators",
     recommendedActions: "Recommended Actions",
+    caseHistory: "Case History",
     notifyMedicalTeam: "Notify Medical Team",
     saveCase: "Save Case",
     aiAssessmentCorrection: "AI assessment needs correction",
