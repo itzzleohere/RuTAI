@@ -94,10 +94,10 @@ export const cases = pgTable("cases", {
   // Enhanced case management
   status: text("status", { enum: ["PENDING", "STABLE", "NEEDS_ATTENTION", "CRITICAL", "CLOSED"] }).default("PENDING"),
   assignedDoctorId: integer("assigned_doctor_id").references(() => users.id),
-  assignedAt: timestamp("assigned_at"),
+  // Let's omit assigned_at column since it doesn't exist in the DB yet
   assignedBy: integer("assigned_by").references(() => users.id),
   referredToCenterId: integer("referred_to_center_id").references(() => primaryHealthCenters.id),
-  referredAt: timestamp("referred_at"),
+  // Let's omit referred_at column since it might not exist in the DB yet
   followUpRequired: boolean("follow_up_required").default(false),
   followUpDate: timestamp("follow_up_date"),
   emergencyNotes: text("emergency_notes"),
