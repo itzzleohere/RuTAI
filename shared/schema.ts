@@ -93,10 +93,10 @@ export const cases = pgTable("cases", {
   
   // Enhanced case management
   status: text("status", { enum: ["PENDING", "STABLE", "NEEDS_ATTENTION", "CRITICAL", "CLOSED"] }).default("PENDING"),
-  assignedTo: integer("assigned_to").references(() => users.id),
+  assignedDoctorId: integer("assigned_doctor_id").references(() => users.id),
   assignedAt: timestamp("assigned_at"),
   assignedBy: integer("assigned_by").references(() => users.id),
-  referredTo: integer("referred_to").references(() => primaryHealthCenters.id),
+  referredToCenterId: integer("referred_to_center_id").references(() => primaryHealthCenters.id),
   referredAt: timestamp("referred_at"),
   followUpRequired: boolean("follow_up_required").default(false),
   followUpDate: timestamp("follow_up_date"),
@@ -195,8 +195,8 @@ export const caseRelations = relations(cases, ({ one, many }) => ({
   recommendations: many(caseRecommendations),
   aiFeedback: many(aiFeedback),
   medicalFeedback: many(medicalFeedback),
-  assignedToUser: one(users, {
-    fields: [cases.assignedTo],
+  assignedDoctor: one(users, {
+    fields: [cases.assignedDoctorId],
     references: [users.id],
   }),
   assignedByUser: one(users, {
@@ -204,7 +204,7 @@ export const caseRelations = relations(cases, ({ one, many }) => ({
     references: [users.id],
   }),
   referredToCenter: one(primaryHealthCenters, {
-    fields: [cases.referredTo],
+    fields: [cases.referredToCenterId],
     references: [primaryHealthCenters.id],
   }),
   reviewedByUser: one(users, {
