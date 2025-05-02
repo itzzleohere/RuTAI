@@ -196,7 +196,7 @@ export default {
     feedbackAdded: "Feedback added"
   },
   webDashboard: {
-    title: "Medical Web Dashboard",
+    title: "Medical Dashboard",
     searchPatients: "Search patients...",
     doctor: "Doctor",
     admin: "Admin",
