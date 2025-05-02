@@ -91,6 +91,19 @@ export const cases = pgTable("cases", {
   reviewedAt: timestamp("reviewed_at"),
   reviewedBy: integer("reviewed_by").references(() => users.id),
   
+  // Enhanced case management
+  status: text("status", { enum: ["PENDING", "STABLE", "NEEDS_ATTENTION", "CRITICAL", "CLOSED"] }).default("PENDING"),
+  assignedTo: integer("assigned_to").references(() => users.id),
+  assignedAt: timestamp("assigned_at"),
+  assignedBy: integer("assigned_by").references(() => users.id),
+  referredTo: integer("referred_to").references(() => primaryHealthCenters.id),
+  referredAt: timestamp("referred_at"),
+  followUpRequired: boolean("follow_up_required").default(false),
+  followUpDate: timestamp("follow_up_date"),
+  closedAt: timestamp("closed_at"),
+  closedBy: integer("closed_by").references(() => users.id),
+  closedReason: text("closed_reason"),
+  
   // Relations
   healthWorkerId: integer("health_worker_id").references(() => healthWorkers.id),
   
@@ -115,6 +128,21 @@ export const aiFeedback = pgTable("ai_feedback", {
   feedbackNotes: text("feedback_notes"),
   userId: integer("user_id").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Medical feedback from professionals
+export const medicalFeedback = pgTable("medical_feedback", {
+  id: serial("id").primaryKey(),
+  caseId: integer("case_id").references(() => cases.id).notNull(),
+  feedbackType: text("feedback_type", { enum: ["TREATMENT_SUGGESTION", "REFERRAL", "FOLLOW_UP", "EMERGENCY_ACTION", "OTHER"] }).notNull(),
+  feedbackText: text("feedback_text").notNull(),
+  actionRequired: boolean("action_required").default(false),
+  actionCompleted: boolean("action_completed").default(false),
+  actionCompletedAt: timestamp("action_completed_at"),
+  actionCompletedBy: integer("action_completed_by").references(() => users.id),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Session table for storing session data
@@ -165,6 +193,28 @@ export const caseRelations = relations(cases, ({ one, many }) => ({
     references: [healthWorkers.id],
   }),
   recommendations: many(caseRecommendations),
+  aiFeedback: many(aiFeedback),
+  medicalFeedback: many(medicalFeedback),
+  assignedToUser: one(users, {
+    fields: [cases.assignedTo],
+    references: [users.id],
+  }),
+  assignedByUser: one(users, {
+    fields: [cases.assignedBy],
+    references: [users.id],
+  }),
+  referredToCenter: one(primaryHealthCenters, {
+    fields: [cases.referredTo],
+    references: [primaryHealthCenters.id],
+  }),
+  reviewedByUser: one(users, {
+    fields: [cases.reviewedBy],
+    references: [users.id],
+  }),
+  closedByUser: one(users, {
+    fields: [cases.closedBy],
+    references: [users.id],
+  }),
 }));
 
 export const caseRecommendationsRelations = relations(caseRecommendations, ({ one }) => ({
@@ -185,6 +235,21 @@ export const aiFeedbackRelations = relations(aiFeedback, ({ one }) => ({
   }),
 }));
 
+export const medicalFeedbackRelations = relations(medicalFeedback, ({ one }) => ({
+  case: one(cases, {
+    fields: [medicalFeedback.caseId],
+    references: [cases.id],
+  }),
+  user: one(users, {
+    fields: [medicalFeedback.userId],
+    references: [users.id],
+  }),
+  actionCompletedByUser: one(users, {
+    fields: [medicalFeedback.actionCompletedBy],
+    references: [users.id],
+  }),
+}));
+
 // Create validation schemas
 export const userInsertSchema = createInsertSchema(users);
 export const healthWorkerInsertSchema = createInsertSchema(healthWorkers);
@@ -194,6 +259,7 @@ export const otpInsertSchema = createInsertSchema(otps);
 export const caseInsertSchema = createInsertSchema(cases);
 export const caseRecommendationInsertSchema = createInsertSchema(caseRecommendations);
 export const aiFeedbackInsertSchema = createInsertSchema(aiFeedback);
+export const medicalFeedbackInsertSchema = createInsertSchema(medicalFeedback);
 
 // Export types
 export type User = typeof users.$inferSelect;
@@ -204,3 +270,15 @@ export type Otp = typeof otps.$inferSelect;
 export type CaseData = typeof cases.$inferSelect;
 export type CaseRecommendation = typeof caseRecommendations.$inferSelect;
 export type AiFeedback = typeof aiFeedback.$inferSelect;
+export type MedicalFeedback = typeof medicalFeedback.$inferSelect;
+
+// Export insert types
+export type InsertUser = typeof userInsertSchema._type;
+export type InsertHealthWorker = typeof healthWorkerInsertSchema._type;
+export type InsertDoctor = typeof doctorInsertSchema._type;
+export type InsertPrimaryHealthCenter = typeof primaryHealthCenterInsertSchema._type;
+export type InsertOtp = typeof otpInsertSchema._type;
+export type InsertCase = typeof caseInsertSchema._type;
+export type InsertCaseRecommendation = typeof caseRecommendationInsertSchema._type;
+export type InsertAiFeedback = typeof aiFeedbackInsertSchema._type;
+export type InsertMedicalFeedback = typeof medicalFeedbackInsertSchema._type;

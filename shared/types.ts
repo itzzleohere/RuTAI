@@ -3,6 +3,12 @@ import { z } from "zod";
 // Enum for case severity levels
 export type CaseSeverity = "EMERGENCY" | "MODERATE" | "LOW" | "UNKNOWN" | null;
 
+// Case status for medical team response
+export type CaseStatus = "PENDING" | "STABLE" | "NEEDS_ATTENTION" | "CRITICAL" | "CLOSED";
+
+// Medical feedback types
+export type FeedbackType = "TREATMENT_SUGGESTION" | "REFERRAL" | "FOLLOW_UP" | "EMERGENCY_ACTION" | "OTHER";
+
 // User roles
 export type UserRole = "HEALTH_WORKER" | "DOCTOR" | "ADMIN";
 
