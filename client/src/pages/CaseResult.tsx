@@ -130,7 +130,7 @@ export default function CaseResult() {
     return (
       <div className="flex items-center">
         {isAbnormal ? (
-          <AlertCircle className={`text-${getSeverityColor(caseData.severity)} mr-2 h-4 w-4`} />
+          <AlertCircle className={`text-${colorClass} mr-2 h-4 w-4`} />
         ) : (
           <Info className="text-primary mr-2 h-4 w-4" />
         )}
@@ -225,7 +225,7 @@ export default function CaseResult() {
         <div className="space-y-4">
           {caseData.severity === "EMERGENCY" && (
             <Button 
-              className={`w-full bg-${getSeverityColor(caseData.severity)} hover:bg-${getSeverityColor(caseData.severity)}/90`}
+              className={`w-full bg-${colorClass} hover:bg-${colorClass}/90`}
               onClick={() => notifyMutation.mutate()}
               disabled={notifyMutation.isPending}
             >
