@@ -154,7 +154,7 @@ export default function WebDashboard() {
       {/* Top Navigation */}
       <header className="bg-white border-b border-gray-200 p-4">
         <div className="container mx-auto flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary">RuTAI {t('webDashboard.title')}</h1>
+          <h1 className="text-2xl font-bold text-primary">RuTAI - {t('webDashboard.title')}</h1>
           <div className="flex items-center gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
