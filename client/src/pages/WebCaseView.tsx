@@ -518,6 +518,23 @@ export default function WebCaseView() {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     return format(dateObj, 'PPp'); // Format with date-fns 
   };
+  
+  // Helper function to safely render recommendations with proper typing
+  const renderRecommendations = (recommendations: any[] | null) => {
+    if (!Array.isArray(recommendations) || recommendations.length === 0) {
+      return <p className="text-gray-500">{t('webCaseView.noRecommendations')}</p>;
+    }
+    
+    return (
+      <ul className="list-disc pl-5 space-y-1">
+        {recommendations.map((rec: any, index: number) => (
+          <li key={index} className="text-gray-700">
+            {typeof rec === 'string' ? rec : rec.text}
+          </li>
+        ))}
+      </ul>
+    );
+  };
 
   return (
     <div className="bg-gray-50 min-h-screen">
