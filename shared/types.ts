@@ -71,18 +71,18 @@ export interface Case {
   patientName: string;
   age: string;
   gender: string;
-  contactNumber?: string;
+  contactNumber?: string | null;
   
   // Vital signs
-  temperature?: string;
-  pulse?: string;
-  bpSystolic?: string;
-  bpDiastolic?: string;
-  respiratoryRate?: string;
-  oxygenSaturation?: string;
+  temperature?: string | null;
+  pulse?: string | null;
+  bpSystolic?: string | null;
+  bpDiastolic?: string | null;
+  respiratoryRate?: string | null;
+  oxygenSaturation?: string | null;
   
   // Symptoms
-  chiefComplaint?: string;
+  chiefComplaint?: string | null;
   symptoms?: {
     fever: boolean;
     cough: boolean;
@@ -91,20 +91,20 @@ export interface Case {
     shortnessOfBreath: boolean;
     vomiting: boolean;
   };
-  symptomDescription?: string;
-  additionalNotes?: string;
+  symptomDescription?: string | null;
+  additionalNotes?: string | null;
   
   // AI assessment
   severity: CaseSeverity;
-  assessmentTitle?: string;
-  assessmentSummary?: string;
-  aiReasoning?: string;
-  recommendations?: string[];
+  assessmentTitle?: string | null;
+  assessmentSummary?: string | null;
+  aiReasoning?: string | null;
+  recommendations?: string[] | null;
   
   // Status
   isDraft?: boolean;
   notificationSent?: boolean;
-  notificationTime?: string;
+  notificationTime?: string | Date;
   
   // Relations
   healthWorkerId?: number;
@@ -120,8 +120,8 @@ export interface User {
   name: string;
   phone: string;
   role: UserRole;
-  language?: string;
-  password?: string;
+  language?: string | null;
+  password?: string | null;
   healthWorker?: HealthWorker;
   doctor?: Doctor;
   createdAt: string | Date;
@@ -142,8 +142,8 @@ export interface Doctor {
   userId: number;
   specialization?: string;
   primaryHealthCenterId?: number;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
 export interface PrimaryHealthCenter {
@@ -151,8 +151,8 @@ export interface PrimaryHealthCenter {
   name: string;
   location: string;
   contactNumber?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
 // OTP verification types
