@@ -96,12 +96,9 @@ export const cases = pgTable("cases", {
   assignedDoctorId: integer("assigned_doctor_id").references(() => users.id),
   // Only include columns that exist in the DB
   referredToCenterId: integer("referred_to_center_id").references(() => primaryHealthCenters.id),
-  // Using only followUpDate without the required flag
+  // Only include columns we know exist in the database
   followUpDate: timestamp("follow_up_date"),
   emergencyNotes: text("emergency_notes"),
-  closedAt: timestamp("closed_at"),
-  closedBy: integer("closed_by").references(() => users.id),
-  closedReason: text("closed_reason"),
   
   // Relations
   healthWorkerId: integer("health_worker_id").references(() => healthWorkers.id),
@@ -204,10 +201,6 @@ export const caseRelations = relations(cases, ({ one, many }) => ({
   }),
   reviewedByUser: one(users, {
     fields: [cases.reviewedBy],
-    references: [users.id],
-  }),
-  closedByUser: one(users, {
-    fields: [cases.closedBy],
     references: [users.id],
   }),
 }));
