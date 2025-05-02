@@ -41,7 +41,7 @@ function Router() {
           <Route path="/web-dashboard" component={WebDashboard} />
         </>
       )}
-      <Route component={NotFound} />
+      <Route path="/:rest*" component={NotFound} />
     </Switch>
   );
 }
@@ -49,7 +49,7 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="max-w-md mx-auto bg-white min-h-screen shadow-lg relative overflow-hidden">
+      <div className="w-full mx-auto min-h-screen shadow-lg relative overflow-hidden">
         <Router />
       </div>
       <Toaster />

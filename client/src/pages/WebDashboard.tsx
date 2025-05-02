@@ -72,21 +72,8 @@ export default function WebDashboard() {
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Break out of the app's default mobile container
-  useEffect(() => {
-    // Force the containing div to be full-width by applying a class to the parent
-    const appContainer = document.querySelector('#root > div');
-    if (appContainer) {
-      appContainer.classList.remove('max-w-md');
-      appContainer.classList.add('w-full', 'max-w-none');
-      
-      // Clean up when component unmounts
-      return () => {
-        appContainer.classList.add('max-w-md');
-        appContainer.classList.remove('w-full', 'max-w-none');
-      };
-    }
-  }, []);
+  // No longer need to modify container as it's handled at the App level
+  // This space intentionally left blank
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -242,7 +229,7 @@ export default function WebDashboard() {
                   {recentCases.map((caseItem) => (
                     <div 
                       key={caseItem.id}
-                      className={`bg-white p-6 rounded-lg shadow-sm border-l-4 border-${getSeverityColor(caseItem.severity)} cursor-pointer hover:shadow-md transition-shadow`}
+                      className={`bg-white p-6 rounded-lg shadow-sm border-l-4 border-${getSeverityColor(caseItem.severity).toLowerCase()} cursor-pointer hover:shadow-md transition-shadow`}
                       onClick={() => navigate(`/case/${caseItem.id}`)}
                     >
                       <div className="flex justify-between">
@@ -252,7 +239,7 @@ export default function WebDashboard() {
                             {t('caseResult.caseId')}: #{caseItem.id} • {formatDate(caseItem.createdAt)}
                           </p>
                         </div>
-                        <span className={`px-3 py-1 bg-${getSeverityColor(caseItem.severity)} text-white text-sm rounded-full flex items-center`}>
+                        <span className={`px-3 py-1 bg-${getSeverityColor(caseItem.severity).toLowerCase()} text-white text-sm rounded-full flex items-center`}>
                           {getSeverityText(caseItem.severity)}
                         </span>
                       </div>
