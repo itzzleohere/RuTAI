@@ -60,21 +60,29 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     const connectionWindow = 5000; // 5 seconds window to detect loops
     const maxConnectionsInWindow = 3;
     
+    // Define a global type for the window object to include our custom property
+    interface CustomWindow extends Window {
+      _wsConnectionAttempts?: number[];
+    }
+    
+    // Safely cast window to our custom type
+    const customWindow = window as CustomWindow;
+    
     // Store connection attempts with timestamps
-    if (!window._wsConnectionAttempts) {
-      window._wsConnectionAttempts = [];
+    if (!customWindow._wsConnectionAttempts) {
+      customWindow._wsConnectionAttempts = [];
     }
     
     // Add current attempt
-    window._wsConnectionAttempts.push(now);
+    customWindow._wsConnectionAttempts.push(now);
     
     // Only keep attempts within the recent window
-    window._wsConnectionAttempts = window._wsConnectionAttempts.filter(
-      time => now - time < connectionWindow
+    customWindow._wsConnectionAttempts = customWindow._wsConnectionAttempts.filter(
+      (time: number) => now - time < connectionWindow
     );
     
     // Check if we're in a connection loop
-    if (window._wsConnectionAttempts.length >= maxConnectionsInWindow) {
+    if (customWindow._wsConnectionAttempts.length >= maxConnectionsInWindow) {
       log('Detected potential connection loop, enforcing long cooldown');
       if (reconnectIntervalRef.current) {
         window.clearTimeout(reconnectIntervalRef.current);
@@ -83,7 +91,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       // Add a much longer cooldown to break out of any potential loops
       reconnectIntervalRef.current = window.setTimeout(() => {
         // Clear the attempts when we try again after the cooldown
-        window._wsConnectionAttempts = [];
+        if (customWindow._wsConnectionAttempts) {
+          customWindow._wsConnectionAttempts = [];
+        }
         log('Long cooldown complete, attempting fresh connection');
         connect();
       }, 15000); // 15-second emergency cooldown

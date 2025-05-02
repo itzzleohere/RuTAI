@@ -87,9 +87,36 @@ export default function CaseCard({ caseData, onClick }: CaseCardProps) {
   // Determine color classes based on severity
   const colorClass = getSeverityColor(caseData.severity);
   
+  // Mapping for direct class names instead of string interpolation
+  const getBorderColorClass = (severity: CaseSeverity) => {
+    switch (severity) {
+      case "EMERGENCY":
+        return "border-emergency";
+      case "MODERATE":
+        return "border-alert";
+      case "LOW":
+        return "border-secondary";
+      default:
+        return "border-primary";
+    }
+  };
+
+  const getBgColorClass = (severity: CaseSeverity) => {
+    switch (severity) {
+      case "EMERGENCY":
+        return "bg-emergency";
+      case "MODERATE":
+        return "bg-alert";
+      case "LOW":
+        return "bg-secondary";
+      default:
+        return "bg-primary";
+    }
+  };
+
   return (
     <div 
-      className={`bg-white p-4 rounded-lg shadow-sm border-l-4 border-${colorClass} cursor-pointer hover:shadow-md transition-shadow ${caseData.isOffline ? 'bg-yellow-50' : ''}`}
+      className={`bg-white p-4 rounded-lg shadow-sm border-l-4 ${getBorderColorClass(caseData.severity)} cursor-pointer hover:shadow-md transition-shadow ${caseData.isOffline ? 'bg-yellow-50' : ''}`}
       onClick={onClick}
     >
       <div className="flex justify-between">
@@ -105,7 +132,7 @@ export default function CaseCard({ caseData, onClick }: CaseCardProps) {
           </div>
           <p className="text-sm text-neutral-500">{t('caseResult.caseId')}: #{caseData.id}</p>
         </div>
-        <span className={`px-2 py-1 bg-${colorClass} text-white text-xs rounded-full flex items-center`}>
+        <span className={`px-2 py-1 ${getBgColorClass(caseData.severity)} text-white text-xs rounded-full flex items-center`}>
           {getSeverityText(caseData.severity)}
         </span>
       </div>
