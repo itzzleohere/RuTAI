@@ -38,7 +38,16 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    // Get the token from localStorage
+    const token = localStorage.getItem("token");
+    
+    // Create headers with authorization if token exists
+    const headers: HeadersInit = token 
+      ? { "Authorization": `Bearer ${token}` }
+      : {};
+    
     const res = await fetch(queryKey[0] as string, {
+      headers,
       credentials: "include",
     });
 
