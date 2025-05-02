@@ -52,22 +52,57 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     console.error(`[WebSocket Error] ${message}`, ...args);
   }, []);
   
-  // Connect to WebSocket
+  // Connect to WebSocket with anti-initialization-loop protection
   const connect = useCallback(() => {
-    // Check if we need to enforce a cooldown period to prevent rapid reconnection cycles
+    // To prevent initialization loops, we'll track the number of connection attempts
+    // within a short time window
     const now = Date.now();
-    if (lastSuccessfulConnectionRef.current && 
-        now - lastSuccessfulConnectionRef.current < 8000) {
-      log('Enforcing cooldown period before reconnection');
+    const connectionWindow = 5000; // 5 seconds window to detect loops
+    const maxConnectionsInWindow = 3;
+    
+    // Store connection attempts with timestamps
+    if (!window._wsConnectionAttempts) {
+      window._wsConnectionAttempts = [];
+    }
+    
+    // Add current attempt
+    window._wsConnectionAttempts.push(now);
+    
+    // Only keep attempts within the recent window
+    window._wsConnectionAttempts = window._wsConnectionAttempts.filter(
+      time => now - time < connectionWindow
+    );
+    
+    // Check if we're in a connection loop
+    if (window._wsConnectionAttempts.length >= maxConnectionsInWindow) {
+      log('Detected potential connection loop, enforcing long cooldown');
       if (reconnectIntervalRef.current) {
         window.clearTimeout(reconnectIntervalRef.current);
       }
       
-      // Longer cooldown to reduce connection thrashing
+      // Add a much longer cooldown to break out of any potential loops
+      reconnectIntervalRef.current = window.setTimeout(() => {
+        // Clear the attempts when we try again after the cooldown
+        window._wsConnectionAttempts = [];
+        log('Long cooldown complete, attempting fresh connection');
+        connect();
+      }, 15000); // 15-second emergency cooldown
+      return;
+    }
+    
+    // Normal cooldown check
+    if (lastSuccessfulConnectionRef.current && 
+        now - lastSuccessfulConnectionRef.current < 8000) {
+      log('Enforcing standard cooldown period before reconnection');
+      if (reconnectIntervalRef.current) {
+        window.clearTimeout(reconnectIntervalRef.current);
+      }
+      
+      // Standard cooldown to reduce connection thrashing
       reconnectIntervalRef.current = window.setTimeout(() => {
         log('Cooldown period complete, attempting connection');
         connect();
-      }, 8000); // Increased to 8-second cooldown
+      }, 8000);
       return;
     }
     
@@ -77,17 +112,30 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     
     log(`Connecting to ${wsUrl}`);
     
-    // Close any existing connection
+    // Close any existing connection - with extra safeguards
     if (socketRef.current) {
       log('Closing existing connection');
-      // Only clean up references but don't call onclose callbacks
+      // Store a reference to avoid null pointer issues if something changes during cleanup
       const oldSocket = socketRef.current;
+      
+      // Clear the reference BEFORE closing to prevent reentrant issues
       socketRef.current = null;
       
-      // Remove existing event listeners before closing to prevent duplicate reconnect attempts
-      oldSocket.onclose = null;
-      oldSocket.onerror = null;
-      oldSocket.close();
+      try {
+        // Remove all handlers first to prevent reconnect loops
+        oldSocket.onopen = null;
+        oldSocket.onmessage = null;
+        oldSocket.onclose = null;
+        oldSocket.onerror = null;
+        
+        // Then close the connection
+        if (oldSocket.readyState === WebSocket.OPEN || 
+            oldSocket.readyState === WebSocket.CONNECTING) {
+          oldSocket.close();
+        }
+      } catch (error) {
+        logError('Error cleaning up old socket:', error);
+      }
     }
     
     // Make sure all existing timers are cleared
@@ -108,9 +156,11 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     
     // Create a new WebSocket connection
     try {
+      // Create the socket outside the ref assignment to catch immediate errors
       const socket = new WebSocket(wsUrl);
       socketRef.current = socket;
       
+      // Handle connection established
       socket.onopen = () => {
         log('WebSocket connected');
         setIsConnected(true);
@@ -126,6 +176,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         if (onOpen) onOpen();
       };
       
+      // Handle incoming messages
       socket.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data) as WebSocketMessage;
@@ -147,7 +198,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         }
       };
       
+      // Handle connection closed
       socket.onclose = (event) => {
+        // Only log and act if this is the current socket - prevents stale socket issues
+        if (socket !== socketRef.current && socketRef.current !== null) {
+          log('Ignoring close event from old socket');
+          return;
+        }
+        
         log(`WebSocket disconnected with code ${event.code}, reason: ${event.reason || 'No reason provided'}`);
         setIsConnected(false);
         setConnectionStable(false);
@@ -177,11 +235,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         // No status (probably navigation) - don't aggressively reconnect
         if (event.code === 1005) {
           log('No status code in close frame, likely page navigation');
-          // Use a short delay to see if we can reconnect once
+          // Use a longer delay for no-status closes which are often related to
+          // client-side issues rather than connectivity
           reconnectIntervalRef.current = window.setTimeout(() => {
             log('Attempting a single reconnect after no-status close');
             connect();
-          }, 2000);
+          }, 5000);
           return;
         }
         
@@ -222,7 +281,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         }
       };
       
+      // Handle connection errors
       socket.onerror = (event) => {
+        // Only act on current socket
+        if (socket !== socketRef.current && socketRef.current !== null) {
+          log('Ignoring error event from old socket');
+          return;
+        }
+        
         logError('WebSocket error:', event);
         if (onError) onError(event);
       };
@@ -308,13 +374,26 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     
     // Close any existing connection properly
     if (socketRef.current) {
-      // Remove listeners to prevent double reconnection attempts
-      socketRef.current.onclose = null;
-      socketRef.current.onopen = null;
-      socketRef.current.onmessage = null;
-      socketRef.current.onerror = null;
-      socketRef.current.close();
+      // First, store a reference to the socket to avoid null issues
+      const oldSocket = socketRef.current;
+      
+      // Clear the reference immediately to prevent concurrent operations
       socketRef.current = null;
+      
+      // Remove listeners to prevent double reconnection attempts
+      oldSocket.onclose = null;
+      oldSocket.onopen = null;
+      oldSocket.onmessage = null;
+      oldSocket.onerror = null;
+      
+      try {
+        // Close the socket if it's still open
+        if (oldSocket.readyState === WebSocket.OPEN) {
+          oldSocket.close();
+        }
+      } catch (err) {
+        logError('Error closing socket during reconnect:', err);
+      }
     }
     
     // Clear any lingering timers
@@ -327,8 +406,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     reconnectIntervalRef.current = window.setTimeout(() => {
       log('Starting fresh connection after reconnect request');
       connect();
-    }, 1000);
-  }, [connect, log]);
+    }, 2000);
+  }, [connect, log, logError]);
   
   // Connect on component mount, disconnect on unmount
   // Connection setup and cleanup effect

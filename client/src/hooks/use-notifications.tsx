@@ -1,4 +1,12 @@
-import { createContext, useState, useContext, useEffect, ReactNode, useCallback } from 'react';
+import { 
+  createContext, 
+  useState, 
+  useContext, 
+  useEffect, 
+  ReactNode, 
+  useCallback, 
+  useMemo 
+} from 'react';
 import { useToast } from './use-toast';
 import { useWebSocket } from './use-websocket';
 import { useAuth } from '../store/auth';
@@ -221,21 +229,15 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  // Initialize WebSocket with notification handlers
-  const { 
-    isConnected, 
-    connectionStable, 
-    registerClient, 
-    reconnect 
-  } = useWebSocket({
-    debug: true, // Enable detailed logging
+  // We need to memoize the websocket options to avoid recreating the connection on render
+  const webSocketOptions = useMemo(() => ({
+    debug: true,
     onMessage: handleWebSocketMessage,
     onOpen: () => {
       console.log('WebSocket connection established');
       setConnectionStatus('connected');
       setDisconnectionReason(null);
       
-      // Add notification about reconnection if this wasn't the first connection
       if (reconnectCount > 0) {
         toast({
           title: 'Connection Restored',
@@ -243,41 +245,30 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           variant: 'default',
         });
       }
-      
-      // Register this client with the user ID if available, but don't recreate the connection
-      if (user && user.id) {
-        console.log("Client registration started");
-        const success = registerClient(user.id);
-        console.log(success ? "Client registration succeeded" : "Client registration failed");
-      }
     },
     onClose: () => {
       console.log('WebSocket connection closed');
       setConnectionStatus('disconnected');
-      
-      // Track reconnection attempts for UI feedback
       setLastReconnectAttempt(new Date());
       setDisconnectionReason('Connection lost');
     },
     onError: (error: any) => {
       console.error('WebSocket error:', error);
       setConnectionStatus('unstable');
-      
-      // Increment reconnect count for UI feedback
       setReconnectCount(count => count + 1);
-      
-      // Force reconnection after an error with progressive backoff
-      setTimeout(() => {
-        if (user) {
-          reconnect();
-        }
-      }, Math.min(5000 + (reconnectCount * 1000), 15000)); // Progressive backoff capped at 15 seconds
     },
-    // Increase reconnection attempts for rural areas with poor connectivity
     reconnectAttempts: 10,
-    // Use exponential backoff for reconnections
     reconnectInterval: 2000
-  });
+  }), [handleWebSocketMessage, reconnectCount, toast, setConnectionStatus, setDisconnectionReason, setLastReconnectAttempt, setReconnectCount]);
+  
+  // Initialize WebSocket with notification handlers
+  const { 
+    isConnected, 
+    connectionStable, 
+    registerClient, 
+    reconnect,
+    sendMessage
+  } = useWebSocket(webSocketOptions);
   
   // Handle browser online/offline events
   useEffect(() => {
@@ -322,8 +313,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   }, [isConnected, connectionStable, reconnectCount]);
   
-  // We'll handle registration only in the onOpen callback to prevent duplicate registrations
-  // that could cause connection issues
+  // Register with the server when user data is available and connection is stable
+  useEffect(() => {
+    if (isConnected && connectionStable && user && user.id) {
+      console.log("Attempting user registration when connection is stable");
+      const success = registerClient(user.id);
+      console.log(`User registration ${success ? 'succeeded' : 'failed'}`);
+    }
+  }, [isConnected, connectionStable, user, registerClient]);
   
   // Create a function to manually reconnect the WebSocket
   const reconnectWebSocket = useCallback(() => {
