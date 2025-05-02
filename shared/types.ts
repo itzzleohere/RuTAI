@@ -65,6 +65,14 @@ export interface AIAnalysisResult {
   recommendations: string[];
 }
 
+// Define a more flexible CaseRecommendation interface
+export interface CaseRecommendation {
+  id: number;
+  caseId: number;
+  text: string;
+  createdAt: string | Date;
+}
+
 // Main Case type for the application
 export interface Case {
   id: number;
@@ -102,12 +110,12 @@ export interface Case {
   recommendations?: string[] | CaseRecommendation[] | null;
   
   // Status
-  isDraft?: boolean;
-  notificationSent?: boolean;
-  notificationTime?: string | Date;
+  isDraft?: boolean | null;
+  notificationSent?: boolean | null;
+  notificationTime?: string | Date | null;
   
   // Relations
-  healthWorkerId?: number;
+  healthWorkerId?: number | null;
   
   // Timestamps
   createdAt: string | Date;
@@ -163,14 +171,6 @@ export interface OtpRequest {
 export interface OtpVerification {
   phone: string;
   otp: string;
-}
-
-// Define a more flexible CaseRecommendation interface
-export interface CaseRecommendation {
-  id: number;
-  caseId: number;
-  text: string;
-  createdAt: string | Date;
 }
 
 // AI feedback type

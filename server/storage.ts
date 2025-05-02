@@ -168,10 +168,25 @@ export const storage = {
     // Insert recommendations if provided
     if (recommendations && recommendations.length) {
       await db.insert(schema.caseRecommendations).values(
-        recommendations.map((text: string) => ({
-          caseId: newCase.id,
-          text,
-        }))
+        recommendations.map((rec: any) => {
+          // Handle both string and object recommendations
+          if (typeof rec === 'string') {
+            return {
+              caseId: newCase.id,
+              text: rec,
+            };
+          } else if (rec && typeof rec === 'object' && 'text' in rec) {
+            return {
+              caseId: newCase.id,
+              text: rec.text,
+            };
+          } else {
+            return {
+              caseId: newCase.id,
+              text: String(rec),
+            };
+          }
+        })
       );
     }
     
@@ -181,11 +196,11 @@ export const storage = {
   
   async updateCase(id: number, caseData: Partial<Case>): Promise<Case | null> {
     try {
-      const { recommendations, createdAt, updatedAt, notificationTime, ...caseValues } = caseData;
+      const { recommendations, createdAt, updatedAt, ...restCaseData } = caseData;
       
       // Process timestamp fields to ensure they are in the correct format
-      const updateValues = {
-        ...caseValues,
+      const updateValues: any = {
+        ...restCaseData,
         updatedAt: new Date(),
       };
       
@@ -218,10 +233,25 @@ export const storage = {
         // Insert new recommendations
         if (recommendations.length) {
           await db.insert(schema.caseRecommendations).values(
-            recommendations.map((text: string) => ({
-              caseId: id,
-              text,
-            }))
+            recommendations.map((rec: any) => {
+              // Handle both string and object recommendations
+              if (typeof rec === 'string') {
+                return {
+                  caseId: id,
+                  text: rec,
+                };
+              } else if (rec && typeof rec === 'object' && 'text' in rec) {
+                return {
+                  caseId: id,
+                  text: rec.text,
+                };
+              } else {
+                return {
+                  caseId: id,
+                  text: String(rec),
+                };
+              }
+            })
           );
         }
       }
