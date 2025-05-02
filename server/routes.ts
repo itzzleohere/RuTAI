@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { authRoutes } from "./services/auth";
 import { caseRoutes } from "./services/triage";
 import { webAuthRoutes } from "./services/auth-web";
+import { webDashboardRoutes } from "./services/web-dashboard";
 import session from "express-session";
 import { db } from "@db";
 import PgSession from "connect-pg-simple";
@@ -42,6 +43,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Case routes
   app.use(`${apiPrefix}/cases`, caseRoutes());
+  
+  // Web dashboard routes for case management
+  app.use(`${apiPrefix}/web-cases`, webDashboardRoutes());
 
   // Basic health check endpoint
   app.get(`${apiPrefix}/health`, (req, res) => {

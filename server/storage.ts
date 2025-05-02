@@ -293,6 +293,23 @@ export const storage = {
     });
   },
   
+  // Add a recommendation to a case (used for medical professional feedback)
+  async addCaseRecommendation(caseId: number, text: string) {
+    try {
+      const [recommendation] = await db.insert(schema.caseRecommendations)
+        .values({
+          caseId,
+          text
+        })
+        .returning();
+        
+      return recommendation;
+    } catch (error) {
+      console.error("Error adding case recommendation:", error);
+      throw error;
+    }
+  },
+
   async searchCases(query: string): Promise<Case[]> {
     return db.query.cases.findMany({
       where: like(schema.cases.patientName, `%${query}%`),

@@ -57,7 +57,7 @@ export default function WebCaseView() {
   // Send feedback to health worker
   const feedbackMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/cases/${id}/feedback`, {
+      const res = await apiRequest("POST", `/api/web-cases/${id}/feedback`, {
         feedbackNotes: feedbackNote,
       });
       return res.json();
@@ -83,7 +83,7 @@ export default function WebCaseView() {
   // Update case severity
   const updateSeverityMutation = useMutation({
     mutationFn: async (data: AiFeedback) => {
-      const res = await apiRequest("POST", `/api/cases/${id}/severity`, data);
+      const res = await apiRequest("POST", `/api/web-cases/${id}/severity`, data);
       return res.json();
     },
     onSuccess: () => {
@@ -106,7 +106,7 @@ export default function WebCaseView() {
   // Mark case as reviewed
   const markAsReviewedMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/cases/${id}/review`, {
+      const res = await apiRequest("POST", `/api/web-cases/${id}/review`, {
         reviewed: true,
         correctedSeverity: selectedSeverity,
         feedbackNotes: feedbackNote,
@@ -135,11 +135,12 @@ export default function WebCaseView() {
   // Notify health worker
   const notifyMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/cases/${id}/notify`, {});
+      const res = await apiRequest("POST", `/api/web-cases/${id}/notify`, {});
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/cases/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
       toast({
         title: t('webCaseView.notificationSent'),
         description: t('webCaseView.notificationSentDesc'),

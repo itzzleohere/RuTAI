@@ -1,7 +1,16 @@
 import { Router, Request, Response } from "express";
 import { db } from "@db";
 import { cases, aiFeedback } from "@shared/schema";
-import { Case, AiFeedback } from "@shared/types";
+import { Case, AiFeedback, User } from "@shared/types";
+
+// For request.user typing
+declare global {
+  namespace Express {
+    interface Request {
+      user?: User;
+    }
+  }
+}
 import { eq, and, desc } from "drizzle-orm";
 import { storage } from "../storage";
 
