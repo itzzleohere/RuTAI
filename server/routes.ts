@@ -49,6 +49,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Web dashboard routes for case management
   app.use(`${apiPrefix}/web-cases`, authenticateJwt, webDashboardRoutes());
+  
+  // Health workers list endpoint for filtering
+  app.get(`${apiPrefix}/health-workers`, authenticateJwt, async (req, res) => {
+    try {
+      const healthWorkers = await storage.getHealthWorkersWithUsers();
+      res.json(healthWorkers);
+    } catch (error) {
+      console.error('Error fetching health workers:', error);
+      res.status(500).json({ message: 'Failed to fetch health workers' });
+    }
+  });
 
   // Basic health check endpoint
   app.get(`${apiPrefix}/health`, (req, res) => {

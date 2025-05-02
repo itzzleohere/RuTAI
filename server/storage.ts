@@ -7,6 +7,26 @@ import { Case, CaseSeverity, User, HealthWorker, Doctor } from "@shared/types";
 
 export const storage = {
   // User management
+  async getHealthWorkersWithUsers(): Promise<User[]> {
+    const healthWorkers = await db.query.healthWorkers.findMany({
+      with: {
+        user: true
+      }
+    });
+    
+    // Map results to expected format
+    return healthWorkers.map(hw => ({
+      ...hw.user,
+      healthWorker: {
+        id: hw.id,
+        userId: hw.userId,
+        areaCode: hw.areaCode,
+        primaryHealthCenterId: hw.primaryHealthCenterId,
+        createdAt: hw.createdAt,
+        updatedAt: hw.updatedAt
+      }
+    })) as User[];
+  },
   async getUser(id: number): Promise<User | null> {
     const user = await db.query.users.findFirst({
       where: eq(schema.users.id, id),

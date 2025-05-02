@@ -184,6 +184,29 @@ export default {
     analyticsComingSoon: "Detailed analytics and reporting coming soon",
     healthWorkerManagement: "Health Worker Management",
     healthWorkerManagementComingSoon: "Health worker management features coming soon",
-    noCases: "No cases to display"
+    noCases: "No cases to display",
+    // Filter translations
+    filterTitle: "Filter Cases",
+    filterApply: "Apply Filters",
+    filterReset: "Reset",
+    filterByDate: "Filter by Date",
+    filterByStatus: "Filter by Status",
+    filterByAssignment: "Filter by Assignment",
+    filterByHealthWorker: "Filter by Health Worker",
+    filterDateFrom: "From",
+    filterDateTo: "To",
+    allStatuses: "All Statuses",
+    pending: "Pending",
+    stable: "Stable",
+    needsAttention: "Needs Attention",
+    critical: "Critical",
+    closed: "Closed",
+    allAssignments: "All Cases",
+    assigned: "Assigned",
+    unassigned: "Unassigned",
+    allHealthWorkers: "All Health Workers",
+    reviewed: "Reviewed",
+    notReviewed: "Not Reviewed",
+    filterByReviewStatus: "Filter by Review Status"
   }
 };
