@@ -8,7 +8,8 @@ import { format } from "date-fns";
 import {
   AlertCircle, CheckCircle, ArrowUp, ArrowDown, 
   MessageSquare, RotateCw, Clipboard, Bell,
-  ChevronLeft, XCircle, PieChart, Clock
+  ChevronLeft, XCircle, PieChart, Clock,
+  UserCheck, Building, MoveRight, Ambulance, CalendarClock
 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 
@@ -18,6 +19,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -26,8 +36,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import LoadingOverlay from "@/components/LoadingOverlay";
-import { Case, CaseSeverity, AiFeedback } from "@shared/types";
+import { 
+  Case, CaseSeverity, AiFeedback, CaseStatus, 
+  FeedbackType, MedicalFeedback, User, PrimaryHealthCenter 
+} from "@shared/types";
 
 export default function WebCaseView() {
   const { id } = useParams();
@@ -38,9 +57,25 @@ export default function WebCaseView() {
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [referDialogOpen, setReferDialogOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [followUpDialogOpen, setFollowUpDialogOpen] = useState(false);
+  const [emergencyDialogOpen, setEmergencyDialogOpen] = useState(false);
+  
+  // Form state
   const [feedbackNote, setFeedbackNote] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState<CaseSeverity | null>(null);
   const [reviewCompleted, setReviewCompleted] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<CaseStatus>('PENDING');
+  const [selectedFeedbackType, setSelectedFeedbackType] = useState<FeedbackType>('TREATMENT_SUGGESTION');
+  const [actionRequired, setActionRequired] = useState(false);
+  const [selectedFollowUpDate, setSelectedFollowUpDate] = useState<Date | undefined>(undefined);
+  const [emergencyNotes, setEmergencyNotes] = useState('');
+  
+  // For assignment & referral
+  const [selectedDoctor, setSelectedDoctor] = useState<number | null>(null);
+  const [selectedCenter, setSelectedCenter] = useState<number | null>(null);
 
   // Fetch case data
   const { data: caseData, isLoading } = useQuery<Case>({
