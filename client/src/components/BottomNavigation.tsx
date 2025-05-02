@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/lib/i18n";
-import { Home, Search, RefreshCw, User } from "lucide-react";
+import { Home, Search, RefreshCw, User, Laptop } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 
@@ -78,16 +78,11 @@ export default function BottomNavigation() {
       </button>
       
       <button 
-        className="flex flex-col items-center p-2 text-neutral-500"
-        onClick={() => {
-          toast({
-            title: t('feature.comingSoon'),
-            description: t('feature.comingSoonDesc')
-          });
-        }}
+        className={`flex flex-col items-center p-2 ${isActive('/web-dashboard') ? 'text-primary' : 'text-neutral-500'}`}
+        onClick={() => navigate('/web-dashboard')}
       >
-        <User className="h-5 w-5" />
-        <span className="text-xs mt-1">{t('nav.profile')}</span>
+        <Laptop className="h-5 w-5" />
+        <span className="text-xs mt-1">{t('nav.webDashboard') || 'Web Dashboard'}</span>
       </button>
     </div>
   );

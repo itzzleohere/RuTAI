@@ -8,6 +8,7 @@ import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import NewCase from "@/pages/NewCase";
 import CaseResult from "@/pages/CaseResult";
+import WebDashboard from "@/pages/WebDashboard";
 import { queryClient } from "./lib/queryClient";
 import { useAuth } from "./store/auth.tsx";
 import { withAuth } from "./store/auth.tsx";
@@ -37,6 +38,7 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/case/new" component={NewCase} />
           <Route path="/case/:id" component={CaseResult} />
+          <Route path="/web-dashboard" component={WebDashboard} />
         </>
       )}
       <Route component={NotFound} />
