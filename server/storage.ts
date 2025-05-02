@@ -133,31 +133,57 @@ export const storage = {
   },
   
   async updateCase(id: number, caseData: Partial<Case>): Promise<Case | null> {
-    const { recommendations, ...caseValues } = caseData;
-    
-    // Update the case
-    await db.update(schema.cases)
-      .set(caseValues)
-      .where(eq(schema.cases.id, id));
-    
-    // Update recommendations if provided
-    if (recommendations) {
-      // Delete existing recommendations
-      await db.delete(schema.caseRecommendations)
-        .where(eq(schema.caseRecommendations.caseId, id));
+    try {
+      const { recommendations, createdAt, updatedAt, notificationTime, ...caseValues } = caseData;
       
-      // Insert new recommendations
-      if (recommendations.length) {
-        await db.insert(schema.caseRecommendations).values(
-          recommendations.map((text: string) => ({
-            caseId: id,
-            text,
-          }))
-        );
+      // Process timestamp fields to ensure they are in the correct format
+      const updateValues = {
+        ...caseValues,
+        updatedAt: new Date(),
+      };
+      
+      // Only include notificationTime if it's provided and is a valid date
+      if (notificationTime) {
+        if (notificationTime instanceof Date) {
+          updateValues.notificationTime = notificationTime;
+        } else if (typeof notificationTime === 'string') {
+          try {
+            // Attempt to parse string date into a Date object
+            updateValues.notificationTime = new Date(notificationTime);
+          } catch (e) {
+            console.error("Invalid notification time format:", e);
+            // Skip adding invalid date
+          }
+        }
       }
+      
+      // Update the case
+      await db.update(schema.cases)
+        .set(updateValues)
+        .where(eq(schema.cases.id, id));
+      
+      // Update recommendations if provided
+      if (recommendations) {
+        // Delete existing recommendations
+        await db.delete(schema.caseRecommendations)
+          .where(eq(schema.caseRecommendations.caseId, id));
+        
+        // Insert new recommendations
+        if (recommendations.length) {
+          await db.insert(schema.caseRecommendations).values(
+            recommendations.map((text: string) => ({
+              caseId: id,
+              text,
+            }))
+          );
+        }
+      }
+      
+      return this.getCaseById(id);
+    } catch (error) {
+      console.error("Error updating case:", error);
+      throw error;
     }
-    
-    return this.getCaseById(id);
   },
   
   // Analytics and dashboard

@@ -50,11 +50,12 @@ export function caseRoutes() {
       const aiResult = await analyzeCase(validatedData);
       
       // Merge AI analysis with case data
+      const now = new Date();
       const completeCase = {
         ...validatedData,
         ...aiResult,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
         // Default to the authenticated user's ID in a real app
         healthWorkerId: 1, // Placeholder
       };
@@ -78,11 +79,12 @@ export function caseRoutes() {
       const draftData = req.body;
       
       // Create a draft case
+      const now = new Date();
       const draft = {
         ...draftData,
         isDraft: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
         severity: "UNKNOWN",
         assessmentTitle: "Draft Case",
         assessmentSummary: "This case has been saved as a draft.",
@@ -108,16 +110,24 @@ export function caseRoutes() {
         return res.status(400).json({ error: "Invalid case ID" });
       }
 
-      const caseData = req.body;
-      const updatedCase = await storage.updateCase(id, caseData);
-      
-      if (!updatedCase) {
+      // Verify that case exists before attempting update
+      const existingCase = await storage.getCaseById(id);
+      if (!existingCase) {
         return res.status(404).json({ error: "Case not found" });
       }
+
+      // Extract data from request body
+      const caseData = req.body;
       
-      return res.status(200).json(updatedCase);
+      try {
+        const updatedCase = await storage.updateCase(id, caseData);
+        return res.status(200).json(updatedCase);
+      } catch (updateError) {
+        console.error("Error updating case:", updateError);
+        return res.status(500).json({ error: "Failed to update case" });
+      }
     } catch (error) {
-      console.error("Error updating case:", error);
+      console.error("Error processing update request:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -144,9 +154,10 @@ export function caseRoutes() {
       console.log(`EMERGENCY NOTIFICATION: Case #${id} requires immediate attention`);
 
       // Update case to mark notification as sent
+      const notificationTime = new Date();
       const updatedCase = await storage.updateCase(id, {
         notificationSent: true,
-        notificationTime: new Date(),
+        notificationTime: notificationTime.toISOString(),
       });
 
       return res.status(200).json({

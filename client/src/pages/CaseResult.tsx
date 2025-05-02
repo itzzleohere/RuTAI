@@ -206,7 +206,7 @@ export default function CaseResult() {
           <div className="mb-6">
             <h3 className="font-medium mb-3">{t('caseResult.recommendedActions')}</h3>
             <ol className="space-y-2 pl-5 list-decimal">
-              {caseData.recommendations.map((recommendation, index) => (
+              {caseData.recommendations.map((recommendation: any, index) => (
                 <li key={index} className="text-sm">
                   {typeof recommendation === 'string'
                     ? recommendation
