@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import { createContext, useState, useContext, useEffect, ReactNode, useCallback } from 'react';
 import { useToast } from './use-toast';
 import { useWebSocket } from './use-websocket';
 import { useAuth } from '../store/auth';
@@ -22,6 +22,9 @@ interface NotificationContextType {
   markAllAsRead: () => void;
   clearNotifications: () => void;
   isWebSocketConnected: boolean;
+  connectionStatus: 'connecting' | 'connected' | 'unstable' | 'disconnected';
+  reconnectWebSocket: () => void;
+  lastReconnectAttempt: Date | null;
 }
 
 // Create the context
@@ -278,6 +281,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   }, [isConnected, user, registerClient, reconnect]);
   
+  // Create a function to manually reconnect the WebSocket
+  const reconnectWebSocket = useCallback(() => {
+    setLastReconnectAttempt(new Date());
+    reconnect();
+  }, [reconnect]);
+  
   // Context value
   const contextValue: NotificationContextType = {
     notifications,
@@ -285,7 +294,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     markAsRead,
     markAllAsRead,
     clearNotifications,
-    isWebSocketConnected: isConnected
+    isWebSocketConnected: isConnected,
+    connectionStatus,
+    reconnectWebSocket,
+    lastReconnectAttempt
   };
   
   return (
