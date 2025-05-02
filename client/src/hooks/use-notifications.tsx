@@ -66,6 +66,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const now = new Date();
     const id = `notification-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     
+    // For broadcast messages that include healthWorkerId, only process if it matches the current user
+    if (message.data && message.data.healthWorkerId && user && 
+        message.data.healthWorkerId !== String(user.id)) {
+      console.log('Skipping notification meant for another user');
+      return;
+    }
+    
     switch (message.type) {
       case 'case_updated':
         // Case was updated, we could refresh the case list or show a notification

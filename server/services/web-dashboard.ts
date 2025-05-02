@@ -494,12 +494,26 @@ export function webDashboardRoutes() {
       // Send notification to the health worker
       if (existingCase.healthWorkerId) {
         const healthWorkerId = String(existingCase.healthWorkerId);
+        
+        // 1. Send direct WebSocket notification to the connected client
         const notificationSent = (global as any).notifyClient(healthWorkerId, {
           type: 'doctor_assigned',
           data: {
             caseId: caseId,
             doctorId: doctorId,
             message: 'A doctor has been assigned to your case',
+            timestamp: new Date()
+          }
+        });
+        
+        // 2. Also broadcast to all clients (this helps when client reconnects)
+        (global as any).notifyClients({
+          type: 'doctor_assigned',
+          data: {
+            caseId: caseId,
+            doctorId: doctorId,
+            healthWorkerId: healthWorkerId, // Include this so clients can filter
+            message: 'A doctor has been assigned to case',
             timestamp: new Date()
           }
         });

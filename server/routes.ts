@@ -131,14 +131,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
   
-  // Add method to notify specific client
+  // Add method to notify specific client - with enhanced logging
   (global as any).notifyClient = (userId: string, message: any) => {
     const client = connectedClients.get(userId);
+    
+    // Log all connected client IDs for debugging
+    console.log(`Current connected clients: ${Array.from(connectedClients.keys()).join(', ')}`);
+    console.log(`Attempting to send notification of type ${message.type} to client with ID: ${userId}`);
+    
     if (client && client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(message));
-      return true;
+      try {
+        client.send(JSON.stringify(message));
+        console.log(`Successfully sent notification to client ${userId}`);
+        return true;
+      } catch (error) {
+        console.error(`Error sending notification to client ${userId}:`, error);
+        return false;
+      }
+    } else {
+      console.log(`Client ${userId} not found or not in OPEN state`);
+      // Store the notification for later delivery if client reconnects
+      return false;
     }
-    return false;
   };
 
   return httpServer;

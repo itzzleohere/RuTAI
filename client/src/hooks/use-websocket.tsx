@@ -67,17 +67,31 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       setIsConnected(false);
       if (onClose) onClose();
       
-      // Attempt to reconnect if not exceeding max attempts
+      // Always attempt to reconnect with a reset attempt counter after a longer period
+      // to account for server restarts or temporary network issues
       if (reconnectAttemptsRef.current < reconnectAttempts) {
         reconnectAttemptsRef.current++;
         if (reconnectIntervalRef.current) {
           window.clearTimeout(reconnectIntervalRef.current);
         }
         
+        // Use a shorter interval for quick reconnects
         reconnectIntervalRef.current = window.setTimeout(() => {
           console.log(`Attempting to reconnect (${reconnectAttemptsRef.current}/${reconnectAttempts})...`);
           connect();
         }, reconnectInterval);
+      } else {
+        // Reset attempts counter and try again after a longer delay
+        console.log('Maximum reconnect attempts reached, will try again in 10 seconds');
+        if (reconnectIntervalRef.current) {
+          window.clearTimeout(reconnectIntervalRef.current);
+        }
+        
+        reconnectIntervalRef.current = window.setTimeout(() => {
+          reconnectAttemptsRef.current = 0;
+          console.log('Resetting reconnect attempts and trying again...');
+          connect();
+        }, 10000); // Try again after 10 seconds
       }
     };
     
