@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authRoutes } from "./services/auth";
 import { caseRoutes } from "./services/triage";
+import { webAuthRoutes } from "./services/auth-web";
 import session from "express-session";
 import { db } from "@db";
 import PgSession from "connect-pg-simple";
@@ -31,8 +32,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API routes with prefix
   const apiPrefix = "/api";
 
-  // Auth routes
+  // Mobile auth routes
   app.use(`${apiPrefix}/auth`, authRoutes());
+
+  // Web dashboard auth routes
+  const webAuth = webAuthRoutes();
+  app.post(`${apiPrefix}/auth/web-login`, webAuth.webLogin);
+  app.post(`${apiPrefix}/auth/verify-web-otp`, webAuth.verifyWebOtp);
 
   // Case routes
   app.use(`${apiPrefix}/cases`, caseRoutes());

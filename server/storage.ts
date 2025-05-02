@@ -80,6 +80,53 @@ export const storage = {
     return otp;
   },
   
+  async createUser(userData: any): Promise<User> {
+    // Insert the user
+    const [newUser] = await db.insert(schema.users)
+      .values({
+        name: userData.name,
+        phone: userData.phone,
+        password: userData.password, // Should be pre-hashed
+        role: userData.role,
+        language: userData.language || "en",
+      })
+      .returning();
+    
+    // If the user is a health worker, create a health worker record
+    if (userData.role === "HEALTH_WORKER") {
+      const [healthWorker] = await db.insert(schema.healthWorkers)
+        .values({
+          userId: newUser.id,
+          areaCode: userData.areaCode,
+          primaryHealthCenterId: userData.primaryHealthCenterId,
+        })
+        .returning();
+      
+      return {
+        ...newUser,
+        healthWorker,
+      } as User;
+    }
+    
+    // If the user is a doctor, create a doctor record
+    if (userData.role === "DOCTOR") {
+      const [doctor] = await db.insert(schema.doctors)
+        .values({
+          userId: newUser.id,
+          specialization: userData.specialization,
+          primaryHealthCenterId: userData.primaryHealthCenterId,
+        })
+        .returning();
+      
+      return {
+        ...newUser,
+        doctor,
+      } as User;
+    }
+    
+    return newUser as User;
+  },
+  
   // Case management
   async getAllCases(): Promise<Case[]> {
     return db.query.cases.findMany({

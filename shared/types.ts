@@ -110,8 +110,8 @@ export interface Case {
   healthWorkerId?: number;
   
   // Timestamps
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
 // User types
@@ -120,11 +120,12 @@ export interface User {
   name: string;
   phone: string;
   role: UserRole;
-  language: string;
+  language?: string;
+  password?: string;
   healthWorker?: HealthWorker;
   doctor?: Doctor;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
 export interface HealthWorker {
@@ -132,8 +133,8 @@ export interface HealthWorker {
   userId: number;
   areaCode?: string;
   primaryHealthCenterId?: number;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
 export interface Doctor {
