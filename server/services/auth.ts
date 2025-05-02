@@ -3,6 +3,9 @@ import { storage } from "../storage";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { db } from "@db";
+import * as schema from "@shared/schema";
+import { User } from "@shared/types";
 
 const JWT_SECRET = process.env.JWT_SECRET || "rural-health-triage-secret";
 const JWT_EXPIRES_IN = "7d";
@@ -42,12 +45,12 @@ export function authRoutes() {
   // Verify OTP and login
   router.post("/verify-otp", async (req, res) => {
     try {
-      const schema = z.object({
+      const otpSchema = z.object({
         phone: z.string().regex(/^\d{10}$/, "Phone must be a 10-digit number"),
         otp: z.string().regex(/^\d{4}$/, "OTP must be a 4-digit number"),
       });
 
-      const { phone, otp } = schema.parse(req.body);
+      const { phone, otp } = otpSchema.parse(req.body);
 
       // Verify OTP
       const isValid = await storage.verifyOtp(phone, otp);
@@ -63,11 +66,48 @@ export function authRoutes() {
       let user = await storage.getUserByPhone(phone);
 
       if (!user) {
-        // In a real app, we might want to register the user here
-        // or redirect to a registration page
-        return res.status(404).json({
+        // For development/demo purposes, we'll auto-create a new user as a health worker
+        try {
+          // Create a user with default password
+          const hashedPassword = await hashPassword("password123");
+          const [newUser] = await db.insert(schema.users)
+            .values({
+              name: `User ${phone.substring(0, 4)}...`,
+              phone: phone,
+              password: hashedPassword,
+              role: "HEALTH_WORKER",
+              language: "en"
+            })
+            .returning();
+            
+          // Create a health worker profile for this user
+          const [healthWorker] = await db.insert(schema.healthWorkers)
+            .values({
+              userId: newUser.id,
+              areaCode: "IN-123"
+            })
+            .returning();
+            
+          user = {
+            ...newUser,
+            healthWorker
+          } as any;
+          
+          console.log(`Auto-created user for phone: ${phone}`);
+        } catch (createError) {
+          console.error("Error creating new user:", createError);
+          return res.status(500).json({
+            success: false,
+            message: "Failed to create new user account"
+          });
+        }
+      }
+
+      // We should have a user at this point, either existing or newly created
+      if (!user) {
+        return res.status(500).json({
           success: false,
-          message: "User not found",
+          message: "Failed to retrieve or create user account"
         });
       }
 
@@ -79,7 +119,7 @@ export function authRoutes() {
       );
 
       // Exclude password from response
-      const { password, ...userWithoutPassword } = user;
+      const { password, ...userWithoutPassword } = user as any;
 
       return res.status(200).json({
         success: true,
