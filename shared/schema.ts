@@ -94,9 +94,9 @@ export const cases = pgTable("cases", {
   // Enhanced case management
   status: text("status", { enum: ["PENDING", "STABLE", "NEEDS_ATTENTION", "CRITICAL", "CLOSED"] }).default("PENDING"),
   assignedDoctorId: integer("assigned_doctor_id").references(() => users.id),
-  // Let's omit columns that don't exist in the DB yet
+  // Only include columns that exist in the DB
   referredToCenterId: integer("referred_to_center_id").references(() => primaryHealthCenters.id),
-  followUpRequired: boolean("follow_up_required").default(false),
+  // Using only followUpDate without the required flag
   followUpDate: timestamp("follow_up_date"),
   emergencyNotes: text("emergency_notes"),
   closedAt: timestamp("closed_at"),
