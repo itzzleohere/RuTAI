@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation, useRoute } from 'wouter';
-import { Plus, ChevronDown, Filter, Search, BarChart4, Map, Users, Activity } from 'lucide-react';
+import { Plus, ChevronDown, Filter, Search, BarChart4, Map, Users, Activity, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,14 +10,27 @@ import { Case, CaseSeverity } from '@shared/types';
 import { useAuth } from '@/store/auth';
 import NotificationBell from '@/components/NotificationBell';
 import { useLanguage } from '@/lib/i18n';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
 
 export default function WebDashboard() {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [location, navigate] = useLocation();
   const [activeView, setActiveView] = useState<string>('overview');
   const [activeTab, setActiveTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  
+  const handleLogout = () => {
+    logout();
+    navigate('/logout');
+  };
 
   // Fetch cases data
   const { data: cases, isLoading } = useQuery<Case[]>({
@@ -100,14 +113,27 @@ export default function WebDashboard() {
               />
             </div>
             <NotificationBell />
-            <div className="flex items-center gap-2 text-sm">
-              <span>{user?.name}</span>
-              <span className="bg-primary text-white px-2 py-1 rounded-md text-xs">
-                {user?.role === 'DOCTOR' ? t('webDashboard.doctor') : 
-                  user?.role === 'ADMIN' ? t('webDashboard.admin') : 
-                  t('webDashboard.healthWorker')}
-              </span>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <div className="flex items-center gap-2 text-sm cursor-pointer">
+                  <span>{user?.name}</span>
+                  <span className="bg-primary text-white px-2 py-1 rounded-md text-xs">
+                    {user?.role === 'DOCTOR' ? t('webDashboard.doctor') : 
+                      user?.role === 'ADMIN' ? t('webDashboard.admin') : 
+                      t('webDashboard.healthWorker')}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>{t('common.account')}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  {t('common.logout')}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
