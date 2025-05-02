@@ -87,6 +87,9 @@ export const cases = pgTable("cases", {
   isDraft: boolean("is_draft").default(false),
   notificationSent: boolean("notification_sent").default(false),
   notificationTime: timestamp("notification_time"),
+  reviewed: boolean("reviewed").default(false),
+  reviewedAt: timestamp("reviewed_at"),
+  reviewedBy: integer("reviewed_by").references(() => users.id),
   
   // Relations
   healthWorkerId: integer("health_worker_id").references(() => healthWorkers.id),

@@ -52,6 +52,9 @@ export const caseSchema = caseFormSchema.extend({
   isDraft: z.boolean().optional(),
   notificationSent: z.boolean().optional(),
   notificationTime: z.date().optional(),
+  reviewed: z.boolean().optional(),
+  reviewedAt: z.date().optional(),
+  reviewedBy: z.number().optional(),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
 });
@@ -113,6 +116,9 @@ export interface Case {
   isDraft?: boolean | null;
   notificationSent?: boolean | null;
   notificationTime?: string | Date | null;
+  reviewed?: boolean | null;
+  reviewedAt?: string | Date | null;
+  reviewedBy?: number | null;
   
   // Relations
   healthWorkerId?: number | null;
