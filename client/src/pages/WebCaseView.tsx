@@ -79,13 +79,53 @@ export default function WebCaseView() {
   const [selectedDoctor, setSelectedDoctor] = useState<number | null>(null);
   const [selectedCenter, setSelectedCenter] = useState<number | null>(null);
 
+  // Explicit type cast to avoid TypeScript errors in the component
+  type CaseDataType = Case & {
+    id: number;
+    patientName: string;
+    age: string;
+    gender: string;
+    contactNumber?: string | null;
+    temperature?: string | null;
+    pulse?: string | null;
+    bpSystolic?: string | null;
+    bpDiastolic?: string | null;
+    respiratoryRate?: string | null;
+    oxygenSaturation?: string | null;
+    chiefComplaint?: string | null;
+    symptoms?: any;
+    symptomDescription?: string | null;
+    additionalNotes?: string | null;
+    severity: CaseSeverity;
+    assessmentTitle?: string | null;
+    assessmentSummary?: string | null;
+    aiReasoning?: string | null;
+    recommendations?: any[] | null;
+    isDraft?: boolean | null;
+    notificationSent?: boolean | null;
+    notificationTime?: string | Date | null;
+    reviewed?: boolean | null;
+    reviewedAt?: string | Date | null;
+    reviewedBy?: number | null;
+    status?: CaseStatus | null;
+    assignedDoctorId?: number | null;
+    referredToCenterId?: number | null;
+    followUpDate?: string | Date | null;
+    emergencyNotes?: string | null;
+    healthWorkerId?: number | null;
+    createdAt: string | Date;
+    updatedAt: string | Date;
+  };
+
   // Fetch case data
-  const { data: caseData, isLoading, error } = useQuery<Case>({
+  const { data: caseDataRaw, isLoading, error } = useQuery<any, Error>({
     queryKey: [`/api/cases/${id}`],
     enabled: !!id, // Only run query if id exists
-    retry: 3,
-    onError: (error) => console.error("Error fetching case data:", error)
+    retry: 3
   });
+  
+  // Cast to the proper type to satisfy TypeScript
+  const caseData = caseDataRaw as CaseDataType;
   
   console.log("Case data fetch status:", { id, isLoading, hasData: !!caseData, error });
   
