@@ -6,7 +6,7 @@ import { caseRoutes } from "./services/triage";
 import { webAuthRoutes } from "./services/auth-web";
 import { webDashboardRoutes } from "./services/web-dashboard";
 import session from "express-session";
-import { db } from "@db";
+import { db, pool } from "@db";
 import PgSession from "connect-pg-simple";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -16,7 +16,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(
     session({
       store: new PgSessionStore({
-        pool: db.pool,
+        conObject: {
+          connectionString: process.env.DATABASE_URL,
+        },
         tableName: "sessions",
         createTableIfMissing: true,
       }),
