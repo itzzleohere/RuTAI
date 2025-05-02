@@ -1,45 +1,85 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useLanguage } from '@/lib/i18n';
+import { useLanguage } from '../lib/i18n';
+import { Case } from '@shared/types';
 import { 
-  BarChart, Bar, 
-  LineChart, Line, 
-  PieChart, Pie, Cell, 
-  CartesianGrid, XAxis, YAxis, 
-  Tooltip, Legend, ResponsiveContainer 
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import { 
-  Card, CardContent, CardDescription, CardHeader, CardTitle 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
 } from '@/components/ui/card';
-import {
-  Tabs, TabsContent, TabsList, TabsTrigger,
-} from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Case, CaseSeverity } from '@shared/types';
 import { 
   Calendar, 
   Download, 
-  ArrowUpDown,
-  Users, 
   Activity, 
-  Zap, 
-  Clock,
-  Map,
-  AlertTriangle,
-  CheckCircle2,
-  TimerReset
+  CheckCircle2, 
+  Users, 
+  Clock 
 } from 'lucide-react';
 
-// Analytics page for the RuTAI web dashboard
+interface SummaryData {
+  total: number;
+  bySeverity: {
+    emergency: number;
+    moderate: number;
+    low: number;
+    unknown: number;
+  };
+  byStatus: {
+    pending: number;
+    stable: number;
+    needsAttention: number;
+    critical: number;
+    closed: number;
+  };
+  reviewedCount: number;
+  assignedCount: number;
+  avgResponseTime: number;
+}
+
+interface TrendDataPoint {
+  name: string;
+  total: number;
+  emergency: number;
+  moderate: number;
+  low: number;
+}
+
+interface AreaDataPoint {
+  name: string;
+  value: number;
+}
+
 export default function Analytics() {
   const { t } = useLanguage();
   const [timeRange, setTimeRange] = useState<string>('week');
   
-  // Fetch cases data
-  const { data: cases, isLoading } = useQuery<Case[]>({
+  // Fetch cases data and analytics summary
+  const { data: cases, isLoading: isCasesLoading } = useQuery<Case[]>({
     queryKey: ['/api/cases'],
   });
+  
+  const { data: summary, isLoading: isSummaryLoading } = useQuery<SummaryData | null>({
+    queryKey: ['/api/analytics/summary'],
+  });
+  
+  const { data: trendsData, isLoading: isTrendLoading } = useQuery<TrendDataPoint[] | null>({
+    queryKey: ['/api/analytics/trends', { timeRange }],
+  });
+  
+  const { data: geoData, isLoading: isAreaLoading } = useQuery<AreaDataPoint[] | null>({
+    queryKey: ['/api/analytics/geographic'],
+  });
+  
+  const isLoading = isCasesLoading || isSummaryLoading || isTrendLoading || isAreaLoading;
   
   if (isLoading) {
     return (
@@ -69,30 +109,44 @@ export default function Analytics() {
     );
   }
   
-  // Prepare data for charts
+  // Prepare data for charts using API data when available
   const severityData = [
-    { name: t('severity.emergency'), value: cases?.filter(c => c.severity === 'EMERGENCY').length || 0, color: '#ef4444' },
-    { name: t('severity.moderate'), value: cases?.filter(c => c.severity === 'MODERATE').length || 0, color: '#f97316' },
-    { name: t('severity.low'), value: cases?.filter(c => c.severity === 'LOW').length || 0, color: '#22c55e' },
+    { name: t('severity.emergency'), value: summary?.bySeverity?.emergency ?? 0, color: '#ef4444' },
+    { name: t('severity.moderate'), value: summary?.bySeverity?.moderate ?? 0, color: '#f97316' },
+    { name: t('severity.low'), value: summary?.bySeverity?.low ?? 0, color: '#22c55e' },
   ];
   
-  // Status breakdown
+  // Status breakdown using API data when available
   const statusData = [
-    { name: t('caseStatus.pending'), value: cases?.filter(c => c.status === 'PENDING').length || 0 },
-    { name: t('caseStatus.stable'), value: cases?.filter(c => c.status === 'STABLE').length || 0 },
-    { name: t('caseStatus.needsAttention'), value: cases?.filter(c => c.status === 'NEEDS_ATTENTION').length || 0 },
-    { name: t('caseStatus.critical'), value: cases?.filter(c => c.status === 'CRITICAL').length || 0 },
-    { name: t('caseStatus.closed'), value: cases?.filter(c => c.status === 'CLOSED').length || 0 },
+    { name: t('caseStatus.pending'), value: summary?.byStatus?.pending ?? 0 },
+    { name: t('caseStatus.stable'), value: summary?.byStatus?.stable ?? 0 },
+    { name: t('caseStatus.needsAttention'), value: summary?.byStatus?.needsAttention ?? 0 },
+    { name: t('caseStatus.critical'), value: summary?.byStatus?.critical ?? 0 },
+    { name: t('caseStatus.closed'), value: summary?.byStatus?.closed ?? 0 },
   ];
   
-  // Time trend data (mock data for now - would be replaced with actual historical data)
+  // Calculated metrics
+  const reviewedPercentage = summary?.reviewedCount && summary.total > 0 
+    ? (summary.reviewedCount / summary.total) * 100 
+    : cases && cases.length > 0
+      ? (cases.filter(c => c.reviewed).length / cases.length) * 100
+      : 0;
+  
+  const assignedPercentage = summary?.assignedCount && summary.total > 0 
+    ? (summary.assignedCount / summary.total) * 100 
+    : cases && cases.length > 0
+      ? (cases.filter(c => c.assignedDoctorId).length / cases.length) * 100
+      : 0;
+  
+  const avgResponseTime = summary?.avgResponseTime ?? 35; // Use API data or default
+  
+  // Fallback time series data if API data is not available
   const getDateXDaysAgo = (daysAgo: number) => {
     const date = new Date();
     date.setDate(date.getDate() - daysAgo);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
   
-  // Filter cases by date range for trend data
   const getFilteredCasesByDay = (daysAgo: number): Case[] => {
     if (!cases) return [];
     
@@ -106,7 +160,8 @@ export default function Analytics() {
     });
   };
   
-  const trendData = [...Array(timeRange === 'week' ? 7 : 30)].map((_, i) => {
+  // Generate trend data using API data or local fallback
+  const trendChartData = trendsData || [...Array(timeRange === 'week' ? 7 : 30)].map((_, i) => {
     const daysAgo = timeRange === 'week' ? 6 - i : 29 - i;
     const dayCases = getFilteredCasesByDay(daysAgo);
     
@@ -119,23 +174,13 @@ export default function Analytics() {
     };
   });
   
-  const reviewedPercentage = cases && cases.length > 0
-    ? (cases.filter(c => c.reviewed).length / cases.length) * 100
-    : 0;
-  
-  const assignedPercentage = cases && cases.length > 0
-    ? (cases.filter(c => c.assignedDoctorId).length / cases.length) * 100
-    : 0;
-  
-  const avgResponseTime = 35; // This would be calculated from actual data
-  
-  // Generate area-wise case distribution (mocked - would be replaced with actual geographic data)
-  const areaData = [
-    { name: 'North Region', value: Math.floor(Math.random() * 30) + 10 },
-    { name: 'South Region', value: Math.floor(Math.random() * 30) + 10 },
-    { name: 'East Region', value: Math.floor(Math.random() * 30) + 10 },
-    { name: 'West Region', value: Math.floor(Math.random() * 30) + 10 },
-    { name: 'Central', value: Math.floor(Math.random() * 30) + 5 },
+  // Generate area-wise case distribution using API data or fallback
+  const areaChartData = geoData || [
+    { name: 'North Region', value: 0 },
+    { name: 'South Region', value: 0 },
+    { name: 'East Region', value: 0 },
+    { name: 'West Region', value: 0 },
+    { name: 'Central', value: 0 },
   ];
   
   return (
@@ -173,7 +218,7 @@ export default function Analytics() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{cases?.length || 0}</div>
+            <div className="text-2xl font-bold">{summary?.total ?? cases?.length ?? 0}</div>
             <p className="text-xs text-muted-foreground">
               {t('analytics.casesRegistered')}
             </p>
@@ -292,7 +337,7 @@ export default function Analytics() {
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={350}>
-            <LineChart data={trendData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <LineChart data={trendChartData as any[]} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis allowDecimals={false} />
@@ -339,7 +384,7 @@ export default function Analytics() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={areaData} layout="vertical">
+              <BarChart data={areaChartData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" />
                 <YAxis dataKey="name" type="category" width={100} />

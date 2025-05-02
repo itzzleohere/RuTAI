@@ -6,6 +6,7 @@ import { authRoutes } from "./services/auth";
 import { caseRoutes } from "./services/triage";
 import { webAuthRoutes, authenticateJwt } from "./services/auth-web";
 import { webDashboardRoutes } from "./services/web-dashboard";
+import { analyticsRoutes } from "./services/analytics";
 import session from "express-session";
 import { db, pool } from "@db";
 import PgSession from "connect-pg-simple";
@@ -49,6 +50,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Web dashboard routes for case management
   app.use(`${apiPrefix}/web-cases`, authenticateJwt, webDashboardRoutes());
+  
+  // Analytics routes for dashboard
+  app.use(`${apiPrefix}/analytics`, analyticsRoutes());
   
   // Health workers list endpoint for filtering
   app.get(`${apiPrefix}/health-workers`, authenticateJwt, async (req, res) => {
