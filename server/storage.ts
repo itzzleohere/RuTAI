@@ -190,13 +190,13 @@ export const storage = {
       };
       
       // Only include notificationTime if it's provided and is a valid date
-      if (notificationTime) {
-        if (notificationTime instanceof Date) {
-          updateValues.notificationTime = notificationTime;
-        } else if (typeof notificationTime === 'string') {
+      if (caseData.notificationTime) {
+        if (caseData.notificationTime instanceof Date) {
+          updateValues.notificationTime = caseData.notificationTime;
+        } else if (typeof caseData.notificationTime === 'string') {
           try {
             // Attempt to parse string date into a Date object
-            updateValues.notificationTime = new Date(notificationTime);
+            updateValues.notificationTime = new Date(caseData.notificationTime);
           } catch (e) {
             console.error("Invalid notification time format:", e);
             // Skip adding invalid date

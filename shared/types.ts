@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // Enum for case severity levels
-export type CaseSeverity = "EMERGENCY" | "MODERATE" | "LOW" | "UNKNOWN";
+export type CaseSeverity = "EMERGENCY" | "MODERATE" | "LOW" | "UNKNOWN" | null;
 
 // User roles
 export type UserRole = "HEALTH_WORKER" | "DOCTOR" | "ADMIN";
@@ -41,7 +41,7 @@ export const caseFormSchema = z.object({
 // Case schema - for API validation
 export const caseSchema = caseFormSchema.extend({
   // Added by AI service
-  severity: z.enum(["EMERGENCY", "MODERATE", "LOW", "UNKNOWN"]).optional(),
+  severity: z.enum(["EMERGENCY", "MODERATE", "LOW", "UNKNOWN"]).nullable().optional(),
   assessmentTitle: z.string().optional(),
   assessmentSummary: z.string().optional(),
   aiReasoning: z.string().optional(),
@@ -99,7 +99,7 @@ export interface Case {
   assessmentTitle?: string | null;
   assessmentSummary?: string | null;
   aiReasoning?: string | null;
-  recommendations?: string[] | null;
+  recommendations?: string[] | CaseRecommendation[] | null;
   
   // Status
   isDraft?: boolean;
@@ -163,6 +163,14 @@ export interface OtpRequest {
 export interface OtpVerification {
   phone: string;
   otp: string;
+}
+
+// Define a more flexible CaseRecommendation interface
+export interface CaseRecommendation {
+  id: number;
+  caseId: number;
+  text: string;
+  createdAt: string | Date;
 }
 
 // AI feedback type
