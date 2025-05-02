@@ -358,7 +358,9 @@ export default function WebDashboard() {
                           className="text-primary hover:text-primary/80"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/web-case/${caseItem.id}`);
+                            const url = `/web-case/${caseItem.id}`;
+                            console.log("Navigating to:", url);
+                            navigate(url);
                           }}
                         >
                           {t('webDashboard.viewDetails')}

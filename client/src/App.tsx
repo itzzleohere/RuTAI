@@ -59,14 +59,20 @@ function Router() {
     return <LoadingOverlay message="Redirecting to web dashboard..." />;
   }
 
+  console.log("Current path:", window.location.pathname);
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
+      <Route path="/web-case/:id">
+        {(params) => {
+          console.log("Route matched for /web-case/:id with params:", params);
+          return <WebCaseView />;
+        }}
+      </Route>
+      <Route path="/web-dashboard" component={WebDashboard} />
       <Route path="/case/new" component={NewCase} />
       <Route path="/case/:id" component={CaseResult} />
-      <Route path="/web-dashboard" component={WebDashboard} />
-      <Route path="/web-case/:id" component={WebCaseView} />
       <Route path="/logout" component={Logout} />
+      <Route path="/" component={Dashboard} />
       <Route component={NotFound} /> {/* Catch-all for authenticated */}
     </Switch>
   );

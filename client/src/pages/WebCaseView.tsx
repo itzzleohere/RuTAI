@@ -49,7 +49,9 @@ import {
 } from "@shared/types";
 
 export default function WebCaseView() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params.id;
+  console.log("WebCaseView params:", params, "id:", id);
   const [, navigate] = useLocation();
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -78,9 +80,14 @@ export default function WebCaseView() {
   const [selectedCenter, setSelectedCenter] = useState<number | null>(null);
 
   // Fetch case data
-  const { data: caseData, isLoading } = useQuery<Case>({
+  const { data: caseData, isLoading, error } = useQuery<Case>({
     queryKey: [`/api/cases/${id}`],
+    enabled: !!id, // Only run query if id exists
+    retry: 3,
+    onError: (error) => console.error("Error fetching case data:", error)
   });
+  
+  console.log("Case data fetch status:", { id, isLoading, hasData: !!caseData, error });
   
   // Set initial page title with case ID
   useEffect(() => {
@@ -358,8 +365,48 @@ export default function WebCaseView() {
     },
   });
 
-  if (isLoading || !caseData) {
+  // Handle missing ID parameter
+  if (!id) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-50 p-4">
+        <h1 className="text-2xl font-bold text-red-600 mb-4">{t('common.error')}</h1>
+        <p className="mb-6 text-center">Case ID is missing from the URL. Please go back to the dashboard and try again.</p>
+        <Button onClick={() => navigate('/web-dashboard')}>
+          Return to Dashboard
+        </Button>
+      </div>
+    );
+  }
+  
+  // Handle loading state
+  if (isLoading) {
     return <LoadingOverlay message={t('caseResult.loading')} />;
+  }
+  
+  // Handle error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-50 p-4">
+        <h1 className="text-2xl font-bold text-red-600 mb-4">{t('common.error')}</h1>
+        <p className="mb-6 text-center">Error loading case data. The case may not exist or you might not have permission to view it.</p>
+        <Button onClick={() => navigate('/web-dashboard')}>
+          Return to Dashboard
+        </Button>
+      </div>
+    );
+  }
+  
+  // Handle missing data after loading completes
+  if (!caseData) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-gray-50 p-4">
+        <h1 className="text-2xl font-bold text-red-600 mb-4">{t('common.notFound')}</h1>
+        <p className="mb-6 text-center">The requested case could not be found. It may have been deleted or you might not have permission to view it.</p>
+        <Button onClick={() => navigate('/web-dashboard')}>
+          Return to Dashboard
+        </Button>
+      </div>
+    );
   }
 
   const getSeverityColor = (severity: CaseSeverity): string => {
