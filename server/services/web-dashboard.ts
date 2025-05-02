@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { db } from "@db";
-import { cases, aiFeedback } from "@shared/schema";
-import { Case, AiFeedback, User } from "@shared/types";
+import { cases, aiFeedback, medicalFeedback } from "@shared/schema";
+import { Case, AiFeedback, User, MedicalFeedback, CaseStatus } from "@shared/types";
 
 // For request.user typing
 declare global {
@@ -314,6 +314,377 @@ export function webDashboardRoutes() {
     } catch (error) {
       console.error('Error sending notification:', error);
       res.status(500).json({ error: 'Failed to send notification' });
+    }
+  });
+
+  /**
+   * Update case status
+   */
+  router.post('/:id/status', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      if (!req.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      
+      if (!status) {
+        return res.status(400).json({ error: 'Status is required' });
+      }
+      
+      const caseId = parseInt(id, 10);
+      
+      // Get the case to check if it exists
+      const existingCase = await storage.getCaseById(caseId);
+      if (!existingCase) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+      
+      // Update the case status
+      const updatedCase = await db.update(cases)
+        .set({
+          status: status as CaseStatus,
+          updatedAt: new Date()
+        })
+        .where(eq(cases.id, caseId))
+        .returning();
+      
+      // Send notification to the health worker
+      if (existingCase.healthWorkerId) {
+        const healthWorkerId = String(existingCase.healthWorkerId);
+        const notificationSent = (global as any).notifyClient(healthWorkerId, {
+          type: 'status_change',
+          data: {
+            caseId: caseId,
+            oldStatus: existingCase.status || 'PENDING',
+            newStatus: status,
+            message: 'A medical professional has updated the status of your case',
+            timestamp: new Date()
+          }
+        });
+        
+        console.log(`WebSocket status notification ${notificationSent ? 'sent' : 'not sent'} to health worker ${healthWorkerId}`);
+      }
+      
+      // Broadcast status change to all clients
+      (global as any).notifyClients({
+        type: 'status_updated',
+        data: {
+          caseId: caseId,
+          newStatus: status,
+          updatedAt: new Date()
+        }
+      });
+      
+      res.status(200).json(updatedCase[0]);
+    } catch (error) {
+      console.error('Error updating status:', error);
+      res.status(500).json({ error: 'Failed to update case status' });
+    }
+  });
+
+  /**
+   * Send medical feedback to a case
+   */
+  router.post('/:id/medical-feedback', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { doctorId, feedbackType, content, actionRequired, status } = req.body;
+      
+      if (!req.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      
+      if (!feedbackType || !content) {
+        return res.status(400).json({ error: 'Feedback type and content are required' });
+      }
+      
+      const caseId = parseInt(id, 10);
+      
+      // Get the case to check if it exists
+      const existingCase = await storage.getCaseById(caseId);
+      if (!existingCase) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+      
+      // Create medical feedback
+      const newFeedback = await db.insert(medicalFeedback).values({
+        caseId,
+        doctorId: doctorId || req.user.id,
+        feedbackType,
+        content,
+        actionRequired: actionRequired || false,
+        status: status || 'SENT',
+        createdAt: new Date()
+      }).returning();
+      
+      // Send notification to the health worker
+      if (existingCase.healthWorkerId) {
+        const healthWorkerId = String(existingCase.healthWorkerId);
+        const notificationSent = (global as any).notifyClient(healthWorkerId, {
+          type: 'medical_feedback',
+          data: {
+            caseId: caseId,
+            feedbackId: newFeedback[0].id,
+            feedbackType,
+            message: 'A medical professional has sent medical feedback on your case',
+            actionRequired: actionRequired || false,
+            timestamp: new Date()
+          }
+        });
+        
+        console.log(`WebSocket medical feedback notification ${notificationSent ? 'sent' : 'not sent'} to health worker ${healthWorkerId}`);
+      }
+      
+      // Broadcast to all clients that medical feedback was added
+      (global as any).notifyClients({
+        type: 'medical_feedback_added',
+        data: {
+          caseId: caseId,
+          feedbackId: newFeedback[0].id,
+          updatedAt: new Date()
+        }
+      });
+      
+      res.status(200).json({ 
+        success: true, 
+        message: 'Medical feedback sent successfully',
+        feedback: newFeedback[0]
+      });
+    } catch (error) {
+      console.error('Error sending medical feedback:', error);
+      res.status(500).json({ error: 'Failed to send medical feedback' });
+    }
+  });
+
+  /**
+   * Assign a doctor to a case
+   */
+  router.post('/:id/assign', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { doctorId } = req.body;
+      
+      if (!req.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      
+      if (!doctorId) {
+        return res.status(400).json({ error: 'Doctor ID is required' });
+      }
+      
+      const caseId = parseInt(id, 10);
+      
+      // Get the case to check if it exists
+      const existingCase = await storage.getCaseById(caseId);
+      if (!existingCase) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+      
+      // Update the case with doctor assignment
+      const updatedCase = await db.update(cases)
+        .set({
+          assignedDoctorId: doctorId,
+          updatedAt: new Date()
+        })
+        .where(eq(cases.id, caseId))
+        .returning();
+      
+      // Send notification to the health worker
+      if (existingCase.healthWorkerId) {
+        const healthWorkerId = String(existingCase.healthWorkerId);
+        const notificationSent = (global as any).notifyClient(healthWorkerId, {
+          type: 'doctor_assigned',
+          data: {
+            caseId: caseId,
+            doctorId: doctorId,
+            message: 'A doctor has been assigned to your case',
+            timestamp: new Date()
+          }
+        });
+        
+        console.log(`WebSocket doctor assignment notification ${notificationSent ? 'sent' : 'not sent'} to health worker ${healthWorkerId}`);
+      }
+      
+      res.status(200).json(updatedCase[0]);
+    } catch (error) {
+      console.error('Error assigning doctor:', error);
+      res.status(500).json({ error: 'Failed to assign doctor to case' });
+    }
+  });
+
+  /**
+   * Refer a case to a healthcare center
+   */
+  router.post('/:id/refer', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { centerId } = req.body;
+      
+      if (!req.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      
+      if (!centerId) {
+        return res.status(400).json({ error: 'Center ID is required' });
+      }
+      
+      const caseId = parseInt(id, 10);
+      
+      // Get the case to check if it exists
+      const existingCase = await storage.getCaseById(caseId);
+      if (!existingCase) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+      
+      // Update the case with referral information
+      const updatedCase = await db.update(cases)
+        .set({
+          referredToCenterId: centerId,
+          updatedAt: new Date()
+        })
+        .where(eq(cases.id, caseId))
+        .returning();
+      
+      // Send notification to the health worker
+      if (existingCase.healthWorkerId) {
+        const healthWorkerId = String(existingCase.healthWorkerId);
+        const notificationSent = (global as any).notifyClient(healthWorkerId, {
+          type: 'case_referred',
+          data: {
+            caseId: caseId,
+            centerId: centerId,
+            message: 'Your case has been referred to a healthcare center',
+            timestamp: new Date()
+          }
+        });
+        
+        console.log(`WebSocket referral notification ${notificationSent ? 'sent' : 'not sent'} to health worker ${healthWorkerId}`);
+      }
+      
+      res.status(200).json(updatedCase[0]);
+    } catch (error) {
+      console.error('Error referring case:', error);
+      res.status(500).json({ error: 'Failed to refer case to center' });
+    }
+  });
+
+  /**
+   * Schedule a follow-up for a case
+   */
+  router.post('/:id/follow-up', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { followUpDate } = req.body;
+      
+      if (!req.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      
+      if (!followUpDate) {
+        return res.status(400).json({ error: 'Follow-up date is required' });
+      }
+      
+      const caseId = parseInt(id, 10);
+      
+      // Get the case to check if it exists
+      const existingCase = await storage.getCaseById(caseId);
+      if (!existingCase) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+      
+      // Update the case with follow-up date
+      const updatedCase = await db.update(cases)
+        .set({
+          followUpDate: new Date(followUpDate),
+          updatedAt: new Date()
+        })
+        .where(eq(cases.id, caseId))
+        .returning();
+      
+      // Send notification to the health worker
+      if (existingCase.healthWorkerId) {
+        const healthWorkerId = String(existingCase.healthWorkerId);
+        const notificationSent = (global as any).notifyClient(healthWorkerId, {
+          type: 'follow_up_scheduled',
+          data: {
+            caseId: caseId,
+            followUpDate: followUpDate,
+            message: 'A follow-up has been scheduled for your case',
+            timestamp: new Date()
+          }
+        });
+        
+        console.log(`WebSocket follow-up notification ${notificationSent ? 'sent' : 'not sent'} to health worker ${healthWorkerId}`);
+      }
+      
+      res.status(200).json(updatedCase[0]);
+    } catch (error) {
+      console.error('Error scheduling follow-up:', error);
+      res.status(500).json({ error: 'Failed to schedule follow-up' });
+    }
+  });
+
+  /**
+   * Trigger emergency action for a case
+   */
+  router.post('/:id/emergency', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { notes } = req.body;
+      
+      if (!req.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      
+      const caseId = parseInt(id, 10);
+      
+      // Get the case to check if it exists
+      const existingCase = await storage.getCaseById(caseId);
+      if (!existingCase) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+      
+      // Update the case with emergency information
+      const updatedCase = await db.update(cases)
+        .set({
+          status: 'CRITICAL' as CaseStatus,
+          emergencyNotes: notes || null,
+          updatedAt: new Date()
+        })
+        .where(eq(cases.id, caseId))
+        .returning();
+      
+      // Send emergency notification to the health worker
+      if (existingCase.healthWorkerId) {
+        const healthWorkerId = String(existingCase.healthWorkerId);
+        const notificationSent = (global as any).notifyClient(healthWorkerId, {
+          type: 'emergency_action',
+          data: {
+            caseId: caseId,
+            message: 'EMERGENCY: Immediate action required for your case',
+            notes: notes,
+            timestamp: new Date()
+          }
+        });
+        
+        console.log(`WebSocket emergency notification ${notificationSent ? 'sent' : 'not sent'} to health worker ${healthWorkerId}`);
+      }
+      
+      // Broadcast emergency to all clients
+      (global as any).notifyClients({
+        type: 'emergency_triggered',
+        data: {
+          caseId: caseId,
+          updatedAt: new Date()
+        }
+      });
+      
+      res.status(200).json(updatedCase[0]);
+    } catch (error) {
+      console.error('Error triggering emergency:', error);
+      res.status(500).json({ error: 'Failed to trigger emergency action' });
     }
   });
 
