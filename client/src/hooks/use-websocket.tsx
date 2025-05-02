@@ -331,40 +331,92 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   }, [connect, log]);
   
   // Connect on component mount, disconnect on unmount
+  // Connection setup and cleanup effect
   useEffect(() => {
+    // A flag to track if the component is still mounted
+    let isMounted = true;
+    
     log('Initializing WebSocket connection');
-    connect();
+    
+    // Create a function to safely connect only if the component is still mounted
+    const safeConnect = () => {
+      if (isMounted) {
+        connect();
+      }
+    };
+    
+    // Initial connection
+    safeConnect();
     
     // Set up ping interval to keep connection alive
     const pingInterval = setInterval(() => {
-      if (isConnected && socketRef.current?.readyState === WebSocket.OPEN) {
+      if (isMounted && isConnected && socketRef.current?.readyState === WebSocket.OPEN) {
         ping();
       }
-    }, 30000); // Every 30 seconds
+    }, 25000); // Every 25 seconds
+    
+    // Keep track of sequential reconnection attempts for exponential backoff
+    let reconnectionAttempt = 0;
+    
+    // Set up a special interval to periodically check connection and reconnect if needed
+    const connectionCheckInterval = setInterval(() => {
+      if (isMounted && !isConnected && !reconnectIntervalRef.current) {
+        // Exponential backoff with a max of 30 seconds
+        const backoffTime = Math.min(5000 * Math.pow(1.5, reconnectionAttempt), 30000);
+        log(`Connection check - not connected, scheduling reconnect in ${backoffTime/1000}s`);
+        
+        reconnectionAttempt++;
+        reconnectIntervalRef.current = window.setTimeout(() => {
+          log('Reconnecting from periodic check');
+          safeConnect();
+        }, backoffTime);
+      } else if (isConnected) {
+        // Reset reconnection counter when connected
+        reconnectionAttempt = 0;
+      }
+    }, 30000); // Check every 30 seconds
     
     return () => {
+      // Mark as unmounted to prevent further state updates
+      isMounted = false;
+      
       log('Cleaning up WebSocket connection');
+      
+      // Clear all intervals immediately
+      clearInterval(pingInterval);
+      clearInterval(connectionCheckInterval);
+      
+      // Clean up the socket
       if (socketRef.current) {
         // Remove all event handlers to prevent reconnection attempts during unmount
         socketRef.current.onclose = null;
+        socketRef.current.onopen = null;
+        socketRef.current.onmessage = null;
         socketRef.current.onerror = null;
-        socketRef.current.close();
+        
+        // Close the socket if it's open
+        if (socketRef.current.readyState === WebSocket.OPEN) {
+          socketRef.current.close();
+        }
+        
+        socketRef.current = null;
       }
       
       // Clear all timers
       if (reconnectIntervalRef.current) {
         window.clearTimeout(reconnectIntervalRef.current);
+        reconnectIntervalRef.current = null;
       }
       
       if (pingTimeoutRef.current) {
         window.clearTimeout(pingTimeoutRef.current);
+        pingTimeoutRef.current = null;
       }
       
       if (stabilityTimerRef.current) {
         window.clearTimeout(stabilityTimerRef.current);
+        stabilityTimerRef.current = null;
       }
-      
-      clearInterval(pingInterval);
     };
   }, [connect, ping, isConnected, log]);
   

@@ -81,12 +81,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const wss = new WebSocketServer({ 
     server: httpServer, 
     path: '/ws',
-    // Increase the ping timeout to maintain connections longer
+    // Enable client tracking for connection management
     clientTracking: true,
-    // Set a longer ping timeout for intermittent connections
-    pingTimeout: 60000, // 60 seconds
-    // Set a small ping interval to detect dead connections faster
-    pingInterval: 25000, // 25 seconds
     // Enable compression for efficiency in limited bandwidth scenarios
     perMessageDeflate: {
       zlibDeflateOptions: {

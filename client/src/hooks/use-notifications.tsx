@@ -244,30 +244,20 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         });
       }
       
-      // Register this client with the user ID if available
-      if (user) {
-        registerClient(user.id);
+      // Register this client with the user ID if available, but don't recreate the connection
+      if (user && user.id) {
+        console.log("Client registration started");
+        const success = registerClient(user.id);
+        console.log(success ? "Client registration succeeded" : "Client registration failed");
       }
     },
-    onClose: (event: any) => {
-      console.log(`WebSocket connection closed with code ${event?.code}, reason: ${event?.reason || 'Unknown'}`);
+    onClose: () => {
+      console.log('WebSocket connection closed');
       setConnectionStatus('disconnected');
       
       // Track reconnection attempts for UI feedback
       setLastReconnectAttempt(new Date());
-      
-      // Set disconnection reason based on close code for better user feedback
-      if (event?.code === 1000 || event?.code === 1001) {
-        setDisconnectionReason('Normal closure, likely page navigation');
-      } else if (event?.code === 1006) {
-        setDisconnectionReason('Abnormal closure, possible network issue');
-      } else if (event?.code === 1012) {
-        setDisconnectionReason('Server is restarting');
-      } else if (event?.code === 1013) {
-        setDisconnectionReason('Server is too busy');
-      } else {
-        setDisconnectionReason('Connection lost');
-      }
+      setDisconnectionReason('Connection lost');
     },
     onError: (error: any) => {
       console.error('WebSocket error:', error);
@@ -332,20 +322,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   }, [isConnected, connectionStable, reconnectCount]);
   
-  // Register client when user changes or reconnects
-  useEffect(() => {
-    if (isConnected && user) {
-      const registered = registerClient(user.id);
-      console.log(`Client registration ${registered ? 'successful' : 'failed'}`);
-      
-      // If registration fails, try to reconnect
-      if (!registered) {
-        setTimeout(() => {
-          reconnect();
-        }, 2000);
-      }
-    }
-  }, [isConnected, user, registerClient, reconnect]);
+  // We'll handle registration only in the onOpen callback to prevent duplicate registrations
+  // that could cause connection issues
   
   // Create a function to manually reconnect the WebSocket
   const reconnectWebSocket = useCallback(() => {
