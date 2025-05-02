@@ -25,6 +25,8 @@ interface NotificationContextType {
   connectionStatus: 'connecting' | 'connected' | 'unstable' | 'disconnected';
   reconnectWebSocket: () => void;
   lastReconnectAttempt: Date | null;
+  disconnectionReason: string | null;
+  reconnectCount: number;
 }
 
 // Create the context
@@ -32,9 +34,16 @@ const NotificationContext = createContext<NotificationContextType | null>(null);
 
 // Provider component
 export function NotificationProvider({ children }: { children: ReactNode }) {
+  // Notification state
   const [notifications, setNotifications] = useState<NotificationMessage[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
+  
+  // Connection state tracking
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'unstable' | 'disconnected'>('connecting');
+  const [lastReconnectAttempt, setLastReconnectAttempt] = useState<Date | null>(null);
+  const [reconnectCount, setReconnectCount] = useState(0);
+  const [disconnectionReason, setDisconnectionReason] = useState<string | null>(null);
   
   // Get the unread notification count
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -212,59 +221,116 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  // Keep track of connection status for UI display
-  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'unstable' | 'disconnected'>('connecting');
-  const [lastReconnectAttempt, setLastReconnectAttempt] = useState<Date | null>(null);
-  
-  // Initialize WebSocket with notification handlers and debug mode for detailed logging
-  const { isConnected, connectionStable, registerClient, reconnect } = useWebSocket({
-    debug: true, // Enable detailed WebSocket logging
+  // Initialize WebSocket with notification handlers
+  const { 
+    isConnected, 
+    connectionStable, 
+    registerClient, 
+    reconnect 
+  } = useWebSocket({
+    debug: true, // Enable detailed logging
     onMessage: handleWebSocketMessage,
     onOpen: () => {
       console.log('WebSocket connection established');
       setConnectionStatus('connected');
+      setDisconnectionReason(null);
+      
+      // Add notification about reconnection if this wasn't the first connection
+      if (reconnectCount > 0) {
+        toast({
+          title: 'Connection Restored',
+          description: 'Your connection has been restored. Any pending updates will now be processed.',
+          variant: 'default',
+        });
+      }
       
       // Register this client with the user ID if available
       if (user) {
         registerClient(user.id);
       }
     },
-    onClose: () => {
-      console.log('WebSocket connection closed');
+    onClose: (event: any) => {
+      console.log(`WebSocket connection closed with code ${event?.code}, reason: ${event?.reason || 'Unknown'}`);
       setConnectionStatus('disconnected');
       
       // Track reconnection attempts for UI feedback
       setLastReconnectAttempt(new Date());
+      
+      // Set disconnection reason based on close code for better user feedback
+      if (event?.code === 1000 || event?.code === 1001) {
+        setDisconnectionReason('Normal closure, likely page navigation');
+      } else if (event?.code === 1006) {
+        setDisconnectionReason('Abnormal closure, possible network issue');
+      } else if (event?.code === 1012) {
+        setDisconnectionReason('Server is restarting');
+      } else if (event?.code === 1013) {
+        setDisconnectionReason('Server is too busy');
+      } else {
+        setDisconnectionReason('Connection lost');
+      }
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('WebSocket error:', error);
       setConnectionStatus('unstable');
       
-      // Force reconnection after an error
+      // Increment reconnect count for UI feedback
+      setReconnectCount(count => count + 1);
+      
+      // Force reconnection after an error with progressive backoff
       setTimeout(() => {
         if (user) {
           reconnect();
         }
-      }, 5000); // Wait 5 seconds before attempting to reconnect
+      }, Math.min(5000 + (reconnectCount * 1000), 15000)); // Progressive backoff capped at 15 seconds
     },
-    // Increase reconnection attempts
+    // Increase reconnection attempts for rural areas with poor connectivity
     reconnectAttempts: 10,
     // Use exponential backoff for reconnections
     reconnectInterval: 2000
   });
+  
+  // Handle browser online/offline events
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('Browser reports network is online');
+      setTimeout(() => {
+        if (!isConnected) {
+          reconnect();
+        }
+      }, 1000);
+    };
+    
+    const handleOffline = () => {
+      console.log('Browser reports network is offline');
+      setConnectionStatus('disconnected');
+      setDisconnectionReason('Network connection lost');
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [isConnected, reconnect]);
   
   // Update connection status based on connection stability
   useEffect(() => {
     if (isConnected) {
       if (connectionStable) {
         setConnectionStatus('connected');
+        // Reset reconnect count after stable connection achieved
+        if (reconnectCount > 0) {
+          setTimeout(() => setReconnectCount(0), 5000);
+        }
       } else {
         setConnectionStatus('unstable');
       }
     } else {
       setConnectionStatus('disconnected');
     }
-  }, [isConnected, connectionStable]);
+  }, [isConnected, connectionStable, reconnectCount]);
   
   // Register client when user changes or reconnects
   useEffect(() => {
@@ -297,7 +363,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     isWebSocketConnected: isConnected,
     connectionStatus,
     reconnectWebSocket,
-    lastReconnectAttempt
+    lastReconnectAttempt,
+    disconnectionReason,
+    reconnectCount
   };
   
   return (

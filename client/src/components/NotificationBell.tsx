@@ -29,7 +29,9 @@ export default function NotificationBell() {
     isWebSocketConnected,
     connectionStatus,
     reconnectWebSocket,
-    lastReconnectAttempt
+    lastReconnectAttempt,
+    disconnectionReason,
+    reconnectCount
   } = useNotifications();
 
   // Get the last 5 notifications for display
@@ -189,6 +191,18 @@ export default function NotificationBell() {
             {lastReconnectAttempt && !isWebSocketConnected && (
               <div className="text-xs text-muted-foreground mt-1">
                 {t('notifications.lastReconnect')}: {formatDistanceToNow(lastReconnectAttempt, { addSuffix: true })}
+              </div>
+            )}
+            
+            {disconnectionReason && !isWebSocketConnected && (
+              <div className="text-xs text-muted-foreground mt-1 p-1 bg-muted/30 rounded">
+                {disconnectionReason}
+              </div>
+            )}
+            
+            {reconnectCount > 0 && (
+              <div className="text-xs text-muted-foreground mt-1">
+                {reconnectCount} {reconnectCount === 1 ? 'reconnection attempt' : 'reconnection attempts'}
               </div>
             )}
           </div>
