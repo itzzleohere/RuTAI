@@ -190,6 +190,161 @@ export default function WebCaseView() {
       });
     },
   });
+  
+  // Update case status
+  const updateStatusMutation = useMutation({
+    mutationFn: async (status: CaseStatus) => {
+      const res = await apiRequest("POST", `/api/web-cases/${id}/status`, { status });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cases/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
+      toast({
+        title: t('webCaseView.statusUpdated'),
+        description: t('webCaseView.statusUpdatedDesc'),
+      });
+      setStatusDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: t('common.error'),
+        description: error.message || t('webCaseView.statusUpdateFailed'),
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Send medical feedback
+  const medicalFeedbackMutation = useMutation({
+    mutationFn: async (data: Partial<MedicalFeedback>) => {
+      const res = await apiRequest("POST", `/api/web-cases/${id}/medical-feedback`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cases/${id}`] });
+      toast({
+        title: t('webCaseView.feedbackSaved'),
+        description: t('webCaseView.feedbackSavedDesc'),
+      });
+      setFeedbackDialogOpen(false);
+      setFeedbackNote('');
+      setSelectedFeedbackType('TREATMENT_SUGGESTION');
+      setActionRequired(false);
+    },
+    onError: (error) => {
+      toast({
+        title: t('common.error'),
+        description: error.message || t('webCaseView.feedbackSaveFailed'),
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Assign doctor
+  const assignDoctorMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/web-cases/${id}/assign`, { 
+        doctorId: selectedDoctor 
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cases/${id}`] });
+      toast({
+        title: t('webCaseView.doctorAssigned'),
+        description: t('webCaseView.doctorAssignedDesc'),
+      });
+      setAssignDialogOpen(false);
+      setSelectedDoctor(null);
+    },
+    onError: (error) => {
+      toast({
+        title: t('common.error'),
+        description: error.message || t('webCaseView.assignmentFailed'),
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Refer to center
+  const referToCenterMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/web-cases/${id}/refer`, { 
+        centerId: selectedCenter 
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cases/${id}`] });
+      toast({
+        title: t('webCaseView.referred'),
+        description: t('webCaseView.referredDesc'),
+      });
+      setReferDialogOpen(false);
+      setSelectedCenter(null);
+    },
+    onError: (error) => {
+      toast({
+        title: t('common.error'),
+        description: error.message || t('webCaseView.referralFailed'),
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Schedule follow-up
+  const scheduleFollowUpMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/web-cases/${id}/follow-up`, { 
+        followUpDate: selectedFollowUpDate
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cases/${id}`] });
+      toast({
+        title: t('webCaseView.followUpScheduled'),
+        description: t('webCaseView.followUpScheduledDesc'),
+      });
+      setFollowUpDialogOpen(false);
+      setSelectedFollowUpDate(undefined);
+    },
+    onError: (error) => {
+      toast({
+        title: t('common.error'),
+        description: error.message || t('webCaseView.schedulingFailed'),
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Trigger emergency action
+  const triggerEmergencyMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", `/api/web-cases/${id}/emergency`, { 
+        notes: emergencyNotes
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/cases/${id}`] });
+      toast({
+        title: t('webCaseView.emergencyTriggered'),
+        description: t('webCaseView.emergencyTriggeredDesc'),
+        variant: "destructive",
+      });
+      setEmergencyDialogOpen(false);
+      setEmergencyNotes('');
+    },
+    onError: (error) => {
+      toast({
+        title: t('common.error'),
+        description: error.message || t('webCaseView.emergencyTriggerFailed'),
+        variant: "destructive",
+      });
+    },
+  });
 
   if (isLoading || !caseData) {
     return <LoadingOverlay message={t('caseResult.loading')} />;
@@ -219,6 +374,42 @@ export default function WebCaseView() {
       case "MODERATE": return t('severity.moderate');
       case "LOW": return t('severity.low');
       default: return t('severity.unknown');
+    }
+  };
+  
+  // Get status text
+  const getCaseStatusText = (status: CaseStatus): string => {
+    switch(status) {
+      case "PENDING": return t('caseStatus.pending');
+      case "STABLE": return t('caseStatus.stable');
+      case "NEEDS_ATTENTION": return t('caseStatus.needsAttention');
+      case "CRITICAL": return t('caseStatus.critical');
+      case "CLOSED": return t('caseStatus.closed');
+      default: return t('caseStatus.pending');
+    }
+  };
+  
+  // Get status color
+  const getCaseStatusColor = (status: CaseStatus | string): string => {
+    switch(status) {
+      case "PENDING": return "text-amber-600";
+      case "STABLE": return "text-green-600";
+      case "NEEDS_ATTENTION": return "text-blue-600";
+      case "CRITICAL": return "text-red-600";
+      case "CLOSED": return "text-gray-600";
+      default: return "text-amber-600";
+    }
+  };
+  
+  // Get feedback type text
+  const getFeedbackTypeText = (type: FeedbackType): string => {
+    switch(type) {
+      case "TREATMENT_SUGGESTION": return t('feedbackType.treatmentSuggestion');
+      case "REFERRAL": return t('feedbackType.referral');
+      case "FOLLOW_UP": return t('feedbackType.followUp');
+      case "EMERGENCY_ACTION": return t('feedbackType.emergencyAction');
+      case "OTHER": return t('feedbackType.other');
+      default: return t('feedbackType.other');
     }
   };
 
@@ -541,12 +732,55 @@ export default function WebCaseView() {
                 <Button 
                   className="w-full justify-start" 
                   variant="outline"
-                  onClick={() => {
-                    setFeedbackDialogOpen(true);
-                  }}
+                  onClick={() => setStatusDialogOpen(true)}
+                >
+                  <PieChart className="h-4 w-4 mr-2" />
+                  {t('webCaseView.updateStatus')}
+                </Button>
+
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => setFeedbackDialogOpen(true)}
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
-                  {t('webCaseView.sendFeedback')}
+                  {t('webCaseView.sendMedicalFeedback')}
+                </Button>
+                
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => setAssignDialogOpen(true)}
+                >
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  {t('webCaseView.assignDoctor')}
+                </Button>
+                
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => setReferDialogOpen(true)}
+                >
+                  <MoveRight className="h-4 w-4 mr-2" />
+                  {t('webCaseView.referToCenter')}
+                </Button>
+                
+                <Button 
+                  className="w-full justify-start" 
+                  variant="outline"
+                  onClick={() => setFollowUpDialogOpen(true)}
+                >
+                  <CalendarClock className="h-4 w-4 mr-2" />
+                  {t('webCaseView.scheduleFollowUp')}
+                </Button>
+                
+                <Button 
+                  className="w-full justify-start" 
+                  variant={caseData.severity === 'EMERGENCY' ? 'destructive' : 'outline'}
+                  onClick={() => setEmergencyDialogOpen(true)}
+                >
+                  <Ambulance className="h-4 w-4 mr-2" />
+                  {t('webCaseView.triggerEmergency')}
                 </Button>
 
                 <Button 
@@ -587,6 +821,16 @@ export default function WebCaseView() {
                 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
+                    <PieChart className="h-4 w-4 mr-2 text-gray-500" />
+                    <span className="text-sm">{t('webCaseView.caseStatus')}</span>
+                  </div>
+                  <span className={`text-sm font-medium ${getCaseStatusColor(caseData.status || 'PENDING')}`}>
+                    {getCaseStatusText(caseData.status as CaseStatus || 'PENDING')}
+                  </span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
                     <CheckCircle className="h-4 w-4 mr-2 text-gray-500" />
                     <span className="text-sm">{t('webCaseView.reviewStatus')}</span>
                   </div>
@@ -607,6 +851,26 @@ export default function WebCaseView() {
                     )}
                   </span>
                 </div>
+                
+                {caseData.reviewedAt && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Clock className="h-4 w-4 mr-2 text-gray-500" />
+                      <span className="text-sm">{t('webCaseView.reviewedAt')}</span>
+                    </div>
+                    <span className="text-sm">{formatDate(caseData.reviewedAt)}</span>
+                  </div>
+                )}
+                
+                {caseData.reviewedBy && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <UserCheck className="h-4 w-4 mr-2 text-gray-500" />
+                      <span className="text-sm">{t('webCaseView.reviewedBy')}</span>
+                    </div>
+                    <span className="text-sm">ID: {caseData.reviewedBy}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -680,25 +944,58 @@ export default function WebCaseView() {
         </DialogContent>
       </Dialog>
 
-      {/* Feedback Dialog */}
+      {/* Medical Feedback Dialog */}
       <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>{t('webCaseView.sendFeedbackToHealthWorker')}</DialogTitle>
+            <DialogTitle>{t('webCaseView.sendMedicalFeedback')}</DialogTitle>
             <DialogDescription>
-              {t('webCaseView.feedbackDialogDesc')}
+              {t('webCaseView.medicalFeedbackDialogDesc')}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-4 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="feedbackNote">{t('webCaseView.feedbackNote')}</Label>
+              <Label htmlFor="feedbackType">{t('webCaseView.feedbackType')}</Label>
+              <Select
+                value={selectedFeedbackType}
+                onValueChange={(value) => setSelectedFeedbackType(value as FeedbackType)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t('webCaseView.selectFeedbackType')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TREATMENT_SUGGESTION">{t('feedbackType.treatmentSuggestion')}</SelectItem>
+                  <SelectItem value="REFERRAL">{t('feedbackType.referral')}</SelectItem>
+                  <SelectItem value="FOLLOW_UP">{t('feedbackType.followUp')}</SelectItem>
+                  <SelectItem value="EMERGENCY_ACTION">{t('feedbackType.emergencyAction')}</SelectItem>
+                  <SelectItem value="OTHER">{t('feedbackType.other')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="feedbackNote">{t('webCaseView.feedbackContent')}</Label>
               <Textarea
                 id="feedbackNote"
-                placeholder={t('webCaseView.enterFeedbackPlaceholder')}
+                placeholder={t('webCaseView.enterMedicalFeedbackPlaceholder')}
                 value={feedbackNote}
                 onChange={(e) => setFeedbackNote(e.target.value)}
                 rows={6}
               />
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="actionRequired" 
+                checked={actionRequired}
+                onCheckedChange={(checked) => setActionRequired(checked as boolean)}
+              />
+              <Label 
+                htmlFor="actionRequired"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                {t('webCaseView.actionRequired')}
+              </Label>
             </div>
           </div>
           <DialogFooter>
@@ -710,10 +1007,275 @@ export default function WebCaseView() {
             </Button>
             <Button
               type="submit"
-              onClick={() => feedbackMutation.mutate()}
-              disabled={feedbackMutation.isPending || !feedbackNote.trim()}
+              onClick={() => medicalFeedbackMutation.mutate({
+                caseId: Number(id),
+                doctorId: 1, // Replace with actual doctor ID from auth
+                feedbackType: selectedFeedbackType,
+                content: feedbackNote,
+                actionRequired,
+                status: 'SENT'
+              })}
+              disabled={medicalFeedbackMutation.isPending || !feedbackNote.trim()}
             >
-              {feedbackMutation.isPending ? t('common.sending') : t('webCaseView.sendFeedback')}
+              {medicalFeedbackMutation.isPending ? t('common.sending') : t('webCaseView.sendFeedback')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Case Status Dialog */}
+      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{t('webCaseView.updateCaseStatus')}</DialogTitle>
+            <DialogDescription>
+              {t('webCaseView.updateCaseStatusDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-2">
+              <Label>{t('webCaseView.selectStatus')}</Label>
+              <RadioGroup 
+                defaultValue={caseData.status || "PENDING"} 
+                value={selectedStatus} 
+                onValueChange={(value) => setSelectedStatus(value as CaseStatus)}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="PENDING" id="pending" />
+                  <Label htmlFor="pending" className="text-amber-600 font-medium">
+                    {t('caseStatus.pending')}
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="STABLE" id="stable" />
+                  <Label htmlFor="stable" className="text-green-600 font-medium">
+                    {t('caseStatus.stable')}
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="NEEDS_ATTENTION" id="needs_attention" />
+                  <Label htmlFor="needs_attention" className="text-blue-600 font-medium">
+                    {t('caseStatus.needsAttention')}
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="CRITICAL" id="critical" />
+                  <Label htmlFor="critical" className="text-red-600 font-medium">
+                    {t('caseStatus.critical')}
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="CLOSED" id="closed" />
+                  <Label htmlFor="closed" className="text-gray-600 font-medium">
+                    {t('caseStatus.closed')}
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setStatusDialogOpen(false)}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="submit"
+              onClick={() => updateStatusMutation.mutate(selectedStatus)}
+              disabled={updateStatusMutation.isPending || !selectedStatus}
+            >
+              {updateStatusMutation.isPending ? t('common.updating') : t('webCaseView.updateStatus')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Assign Doctor Dialog */}
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{t('webCaseView.assignDoctor')}</DialogTitle>
+            <DialogDescription>
+              {t('webCaseView.assignDoctorDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-2">
+              <Label htmlFor="doctorSelect">{t('webCaseView.selectDoctor')}</Label>
+              <Select
+                value={selectedDoctor?.toString() || ""}
+                onValueChange={(value) => setSelectedDoctor(Number(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t('webCaseView.selectDoctorPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* This would be populated from a query to get doctors */}
+                  <SelectItem value="1">Dr. Aarav Patel</SelectItem>
+                  <SelectItem value="2">Dr. Priya Sharma</SelectItem>
+                  <SelectItem value="3">Dr. Vikram Singh</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setAssignDialogOpen(false)}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="submit"
+              onClick={() => assignDoctorMutation.mutate()}
+              disabled={assignDoctorMutation.isPending || !selectedDoctor}
+            >
+              {assignDoctorMutation.isPending ? t('common.assigning') : t('webCaseView.assignDoctor')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Refer to Center Dialog */}
+      <Dialog open={referDialogOpen} onOpenChange={setReferDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{t('webCaseView.referToCenter')}</DialogTitle>
+            <DialogDescription>
+              {t('webCaseView.referToCenterDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-2">
+              <Label htmlFor="centerSelect">{t('webCaseView.selectCenter')}</Label>
+              <Select
+                value={selectedCenter?.toString() || ""}
+                onValueChange={(value) => setSelectedCenter(Number(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t('webCaseView.selectCenterPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* This would be populated from a query to get centers */}
+                  <SelectItem value="1">Kanchipuram District Hospital</SelectItem>
+                  <SelectItem value="2">Chennai General Hospital</SelectItem>
+                  <SelectItem value="3">Vellore Medical Center</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setReferDialogOpen(false)}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="submit"
+              onClick={() => referToCenterMutation.mutate()}
+              disabled={referToCenterMutation.isPending || !selectedCenter}
+            >
+              {referToCenterMutation.isPending ? t('common.referring') : t('webCaseView.refer')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Follow-up Dialog */}
+      <Dialog open={followUpDialogOpen} onOpenChange={setFollowUpDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{t('webCaseView.scheduleFollowUp')}</DialogTitle>
+            <DialogDescription>
+              {t('webCaseView.scheduleFollowUpDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-2">
+              <Label>{t('webCaseView.selectFollowUpDate')}</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
+                    <CalendarClock className="mr-2 h-4 w-4" />
+                    {selectedFollowUpDate ? (
+                      format(selectedFollowUpDate, 'PPP')
+                    ) : (
+                      <span>{t('webCaseView.pickFollowUpDate')}</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={selectedFollowUpDate}
+                    onSelect={setSelectedFollowUpDate}
+                    initialFocus
+                    disabled={(date) => date < new Date()}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setFollowUpDialogOpen(false)}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="submit"
+              onClick={() => scheduleFollowUpMutation.mutate()}
+              disabled={scheduleFollowUpMutation.isPending || !selectedFollowUpDate}
+            >
+              {scheduleFollowUpMutation.isPending ? t('common.scheduling') : t('webCaseView.scheduleFollowUp')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Emergency Dialog */}
+      <Dialog open={emergencyDialogOpen} onOpenChange={setEmergencyDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">{t('webCaseView.triggerEmergencyAction')}</DialogTitle>
+            <DialogDescription>
+              {t('webCaseView.emergencyActionDesc')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-2">
+              <Label htmlFor="emergencyNotes">{t('webCaseView.emergencyNotes')}</Label>
+              <Textarea
+                id="emergencyNotes"
+                placeholder={t('webCaseView.emergencyNotesPlaceholder')}
+                value={emergencyNotes}
+                onChange={(e) => setEmergencyNotes(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => setEmergencyDialogOpen(false)}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="submit"
+              variant="destructive"
+              onClick={() => triggerEmergencyMutation.mutate()}
+              disabled={triggerEmergencyMutation.isPending}
+            >
+              {triggerEmergencyMutation.isPending 
+                ? t('common.triggering') 
+                : t('webCaseView.triggerEmergency')}
             </Button>
           </DialogFooter>
         </DialogContent>

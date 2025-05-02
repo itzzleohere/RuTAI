@@ -125,6 +125,11 @@ export interface Case {
   reviewed?: boolean | null;
   reviewedAt?: string | Date | null;
   reviewedBy?: number | null;
+  status?: CaseStatus | null;
+  assignedDoctorId?: number | null;
+  referredToCenterId?: number | null;
+  followUpDate?: string | Date | null;
+  emergencyNotes?: string | null;
   
   // Relations
   healthWorkerId?: number | null;
@@ -192,4 +197,16 @@ export interface AiFeedback {
   correctedSeverity: CaseSeverity;
   feedbackNotes?: string;
   userId: number;
+}
+
+export interface MedicalFeedback {
+  id?: number;
+  caseId: number;
+  doctorId: number;
+  feedbackType: FeedbackType;
+  content: string;
+  actionRequired: boolean;
+  followUpDate?: Date | null;
+  status: string;
+  createdAt?: Date | string;
 }
