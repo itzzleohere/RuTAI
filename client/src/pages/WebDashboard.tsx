@@ -57,6 +57,12 @@ export default function WebDashboard() {
     }
   };
   
+  // Helper function to create dynamic class names for Tailwind JIT
+  const getSeverityClass = (severity: CaseSeverity, type: string): string => {
+    const color = getSeverityColor(severity).toLowerCase();
+    return `${type}-${color}`;
+  };
+  
   const getSeverityText = (severity: CaseSeverity): string => {
     switch(severity) {
       case "EMERGENCY": return t('severity.emergency');
@@ -229,7 +235,7 @@ export default function WebDashboard() {
                   {recentCases.map((caseItem) => (
                     <div 
                       key={caseItem.id}
-                      className={`bg-white p-6 rounded-lg shadow-sm border-l-4 border-${getSeverityColor(caseItem.severity).toLowerCase()} cursor-pointer hover:shadow-md transition-shadow`}
+                      className={`bg-white p-6 rounded-lg shadow-sm border-l-4 ${getSeverityClass(caseItem.severity, 'border')} cursor-pointer hover:shadow-md transition-shadow`}
                       onClick={() => navigate(`/case/${caseItem.id}`)}
                     >
                       <div className="flex justify-between">
@@ -239,7 +245,7 @@ export default function WebDashboard() {
                             {t('caseResult.caseId')}: #{caseItem.id} • {formatDate(caseItem.createdAt)}
                           </p>
                         </div>
-                        <span className={`px-3 py-1 bg-${getSeverityColor(caseItem.severity).toLowerCase()} text-white text-sm rounded-full flex items-center`}>
+                        <span className={`px-3 py-1 ${getSeverityClass(caseItem.severity, 'bg')} text-white text-sm rounded-full flex items-center`}>
                           {getSeverityText(caseItem.severity)}
                         </span>
                       </div>
