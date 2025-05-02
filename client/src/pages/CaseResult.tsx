@@ -207,7 +207,13 @@ export default function CaseResult() {
             <h3 className="font-medium mb-3">{t('caseResult.recommendedActions')}</h3>
             <ol className="space-y-2 pl-5 list-decimal">
               {caseData.recommendations.map((recommendation, index) => (
-                <li key={index} className="text-sm">{recommendation}</li>
+                <li key={index} className="text-sm">
+                  {typeof recommendation === 'string'
+                    ? recommendation
+                    : recommendation && typeof recommendation === 'object' && 'text' in recommendation
+                      ? recommendation.text
+                      : 'Unknown recommendation'}
+                </li>
               ))}
             </ol>
           </div>
