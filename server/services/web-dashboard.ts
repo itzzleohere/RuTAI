@@ -341,5 +341,93 @@ export function webDashboardRoutes() {
     }
   });
 
+  /**
+   * Mark a case as reviewed, potentially with feedback on the AI assessment
+   */
+  router.post('/:id/review', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { reviewed, correctedSeverity, feedbackNotes } = req.body;
+      
+      if (!req.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      
+      const caseId = parseInt(id, 10);
+      
+      // Get the case to check if it exists
+      const existingCase = await storage.getCaseById(caseId);
+      if (!existingCase) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+      
+      // Update the case with review information
+      const updatedCase = await db.update(cases)
+        .set({
+          reviewed: reviewed || false,
+          reviewedAt: new Date(),
+          reviewedBy: req.user.id,
+          // Only update severity if it was corrected
+          ...(correctedSeverity && correctedSeverity !== existingCase.severity 
+              ? { severity: correctedSeverity } 
+              : {}),
+          updatedAt: new Date()
+        })
+        .where(eq(cases.id, caseId))
+        .returning();
+      
+      // If the severity was corrected, store AI feedback
+      if (correctedSeverity && correctedSeverity !== existingCase.severity) {
+        await db.insert(aiFeedback).values({
+          caseId: caseId,
+          originalSeverity: existingCase.severity,
+          correctedSeverity: correctedSeverity,
+          feedbackNotes: feedbackNotes || null,
+          userId: req.user.id
+        });
+      }
+      
+      // Store the review event in the case history
+      let reviewMessage = `Case reviewed by medical officer (ID: ${req.user.id})`;
+      
+      if (correctedSeverity && correctedSeverity !== existingCase.severity) {
+        reviewMessage += `. Severity corrected from ${existingCase.severity} to ${correctedSeverity}`;
+      }
+      
+      if (feedbackNotes) {
+        reviewMessage += `. Notes: ${feedbackNotes}`;
+      }
+      
+      await db.insert(caseRecommendations).values({
+        caseId: caseId,
+        text: reviewMessage,
+        createdAt: new Date()
+      });
+      
+      // Send notification to the health worker
+      if (existingCase.healthWorkerId) {
+        const healthWorkerId = String(existingCase.healthWorkerId);
+        const notificationSent = (global as any).notifyClient(healthWorkerId, {
+          type: 'case_reviewed',
+          data: {
+            caseId: caseId,
+            reviewedBy: req.user.id,
+            severity: correctedSeverity || existingCase.severity,
+            message: 'Your case has been reviewed by a medical officer',
+            correctionMade: correctedSeverity && correctedSeverity !== existingCase.severity,
+            timestamp: new Date()
+          }
+        });
+        
+        console.log(`WebSocket review notification ${notificationSent ? 'sent' : 'not sent'} to health worker ${healthWorkerId}`);
+      }
+      
+      res.status(200).json(updatedCase[0]);
+    } catch (error) {
+      console.error('Error reviewing case:', error);
+      res.status(500).json({ error: 'Failed to mark case as reviewed' });
+    }
+  });
+
   return router;
 }

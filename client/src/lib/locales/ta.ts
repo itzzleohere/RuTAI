@@ -82,6 +82,7 @@ export default {
     aiReasoning: "AI காரணம்",
     keyIndicators: "முக்கிய மருத்துவ குறிகாட்டிகள்",
     recommendedActions: "பரிந்துரைக்கப்பட்ட நடவடிக்கைகள்",
+    caseHistory: "வழக்கு வரலாறு",
     notifyMedicalTeam: "மருத்துவ குழுவுக்கு அறிவிக்கவும்",
     saveCase: "வழக்கை சேமிக்கவும்",
     aiAssessmentCorrection: "AI மதிப்பீட்டில் திருத்தம் தேவை",

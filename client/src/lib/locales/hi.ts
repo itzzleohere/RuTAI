@@ -82,6 +82,7 @@ export default {
     aiReasoning: "AI तर्क",
     keyIndicators: "प्रमुख क्लिनिकल संकेतक",
     recommendedActions: "अनुशंसित कार्रवाई",
+    caseHistory: "केस इतिहास",
     notifyMedicalTeam: "मेडिकल टीम को सूचित करें",
     saveCase: "केस सहेजें",
     aiAssessmentCorrection: "AI मूल्यांकन में सुधार की आवश्यकता है",
