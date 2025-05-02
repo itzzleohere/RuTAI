@@ -57,15 +57,17 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     // Check if we need to enforce a cooldown period to prevent rapid reconnection cycles
     const now = Date.now();
     if (lastSuccessfulConnectionRef.current && 
-        now - lastSuccessfulConnectionRef.current < 5000) {
+        now - lastSuccessfulConnectionRef.current < 8000) {
       log('Enforcing cooldown period before reconnection');
       if (reconnectIntervalRef.current) {
         window.clearTimeout(reconnectIntervalRef.current);
       }
       
+      // Longer cooldown to reduce connection thrashing
       reconnectIntervalRef.current = window.setTimeout(() => {
+        log('Cooldown period complete, attempting connection');
         connect();
-      }, 5000); // Force a 5-second cooldown
+      }, 8000); // Increased to 8-second cooldown
       return;
     }
     
@@ -146,7 +148,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       };
       
       socket.onclose = (event) => {
-        log(`WebSocket disconnected with code ${event.code}, reason: ${event.reason}`);
+        log(`WebSocket disconnected with code ${event.code}, reason: ${event.reason || 'No reason provided'}`);
         setIsConnected(false);
         setConnectionStable(false);
         
@@ -156,7 +158,15 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
           stabilityTimerRef.current = null;
         }
         
+        // Call user-provided onClose callback
         if (onClose) onClose();
+        
+        // Handle different close events specially
+        // 1000-1001: Normal closures
+        // 1005: No status code present (common during page reloads/navigations)
+        // 1006: Abnormal closure (network loss)
+        // 1012: Service restart
+        // 1013: Try again later (server too busy)
         
         // Normal closure or user navigated away - don't reconnect
         if (event.code === 1000 || event.code === 1001) {
@@ -164,7 +174,31 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
           return;
         }
         
-        // Implementation-specific logic for reconnection
+        // No status (probably navigation) - don't aggressively reconnect
+        if (event.code === 1005) {
+          log('No status code in close frame, likely page navigation');
+          // Use a short delay to see if we can reconnect once
+          reconnectIntervalRef.current = window.setTimeout(() => {
+            log('Attempting a single reconnect after no-status close');
+            connect();
+          }, 2000);
+          return;
+        }
+        
+        // Server busy or restarting - use increasing backoff
+        if (event.code === 1012 || event.code === 1013) {
+          const backoff = 5000 * Math.pow(1.5, reconnectAttemptsRef.current); // Start with 5s, increase exponentially
+          log(`Server busy or restarting, backing off for ${backoff/1000}s before retry`);
+          
+          reconnectIntervalRef.current = window.setTimeout(() => {
+            reconnectAttemptsRef.current = 0; // Reset attempts since this is a known server issue
+            log('Attempting reconnect after server issue');
+            connect();
+          }, backoff);
+          return;
+        }
+        
+        // Connection lost (1006 or other) - implement progressive retry logic
         if (reconnectAttemptsRef.current < reconnectAttempts) {
           reconnectAttemptsRef.current++;
           
@@ -262,13 +296,38 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     return sent;
   }, [sendMessage, log]);
   
-  // Forcefully reconnect the socket
+  // Forcefully reconnect the socket with enhanced error handling
   const reconnect = useCallback(() => {
     log('Forcing reconnection');
+    
+    // Reset the connection state to make UI feedback immediate
+    setConnectionStable(false);
+    
+    // Always track reconnection attempts for user feedback
+    reconnectAttemptsRef.current++;
+    
+    // Close any existing connection properly
     if (socketRef.current) {
+      // Remove listeners to prevent double reconnection attempts
+      socketRef.current.onclose = null;
+      socketRef.current.onopen = null;
+      socketRef.current.onmessage = null;
+      socketRef.current.onerror = null;
       socketRef.current.close();
+      socketRef.current = null;
     }
-    connect();
+    
+    // Clear any lingering timers
+    if (reconnectIntervalRef.current) {
+      window.clearTimeout(reconnectIntervalRef.current);
+      reconnectIntervalRef.current = null;
+    }
+    
+    // Initiate a new connection with a small delay to ensure clean slate
+    reconnectIntervalRef.current = window.setTimeout(() => {
+      log('Starting fresh connection after reconnect request');
+      connect();
+    }, 1000);
   }, [connect, log]);
   
   // Connect on component mount, disconnect on unmount
