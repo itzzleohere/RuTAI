@@ -72,6 +72,11 @@ export default {
     draftSaveFailed: "Failed to save draft. Please try again.",
     offlineDraftSaved: "Offline Draft Saved",
     offlineDraftSavedDesc: "The case has been saved locally and will sync when you're back online",
+    draftLoaded: "Draft Loaded",
+    draftLoadedDesc: "A previously saved draft has been loaded",
+    caseSavedOffline: "Case Saved Offline",
+    caseSavedOfflineDesc: "The case has been saved locally and will be analyzed when online",
+    savingOffline: "Saving case offline...",
   },
   caseResult: {
     title: "Triage Results",
@@ -123,10 +128,21 @@ export default {
     sync: "Sync",
     profile: "Profile"
   },
+  offline: {
+    workingOffline: "You are currently working offline",
+    caseWillSync: "Your data will be automatically synchronized when you're back online",
+    pendingCount: "{{count}} pending case(s)",
+    returnOnline: "You're back online"
+  },
   sync: {
     success: "Sync Complete",
     successDesc: "All data has been synchronized",
-    failed: "Sync failed. Please try again."
+    failed: "Sync failed. Please try again.",
+    pendingCases: "Pending Cases Available",
+    pendingCasesDesc: "{{count}} case(s) ready to sync",
+    syncNow: "Sync Now",
+    syncingCases: "Synchronizing offline cases...",
+    syncComplete: "All cases synced successfully"
   },
   feature: {
     comingSoon: "Coming Soon",

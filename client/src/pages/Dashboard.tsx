@@ -1,23 +1,74 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useLanguage } from "@/lib/i18n";
+import { useOffline } from "@/hooks/use-offline";
+import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import BottomNavigation from "@/components/BottomNavigation";
 import CaseCard from "@/components/CaseCard";
-import { Plus } from "lucide-react";
+import { Plus, WifiOff, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Case, CaseSeverity } from "@shared/types";
 
 export default function Dashboard() {
   const [, navigate] = useLocation();
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<string>("all");
+  const { isOnline, pendingCases, triggerSync, isSyncing } = useOffline();
 
-  const { data: cases, isLoading } = useQuery<Case[]>({
+  // Fetch online cases
+  const { data: cases, isLoading, refetch } = useQuery<Case[]>({
     queryKey: ['/api/cases'],
+    enabled: isOnline, // Only fetch if online
   });
+
+  // Effect to handle sync when coming back online
+  useEffect(() => {
+    if (isOnline && pendingCases.length > 0) {
+      toast({
+        title: t('sync.pendingCases'),
+        description: t('sync.pendingCasesDesc', { count: pendingCases.length.toString() }),
+        action: (
+          <Button variant="outline" size="sm" onClick={handleSync}>
+            {t('sync.syncNow')}
+          </Button>
+        ),
+      });
+    }
+  }, [isOnline]);
+
+  // Handle sync button click
+  const handleSync = async () => {
+    if (!isOnline) {
+      toast({
+        title: t('common.error'),
+        description: t('offline.workingOffline'),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await triggerSync();
+      toast({
+        title: t('sync.success'),
+        description: t('sync.successDesc'),
+      });
+      refetch(); // Refresh the cases list after sync
+    } catch (error) {
+      toast({
+        title: t('common.error'),
+        description: t('sync.failed'),
+        variant: "destructive",
+      });
+    }
+  };
 
   const getSeverityValue = (severity: CaseSeverity): string => {
     switch(severity) {
@@ -28,8 +79,19 @@ export default function Dashboard() {
     }
   };
 
-  const filteredCases = cases?.filter(caseItem => {
+  // Combine online and offline cases
+  const allCases = [
+    ...(cases || []),
+    ...pendingCases.map(offlineCase => ({
+      ...offlineCase.data,
+      id: offlineCase.id,
+      isOffline: true, // Mark as offline for UI distinction
+    })),
+  ];
+
+  const filteredCases = allCases.filter(caseItem => {
     if (activeTab === "all") return true;
+    if (activeTab === "offline") return 'isOffline' in caseItem;
     return getSeverityValue(caseItem.severity) === activeTab;
   });
 

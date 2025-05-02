@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -6,12 +6,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useLanguage } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
+import { useOffline } from "@/hooks/use-offline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Badge } from "@/components/ui/badge";
+import { AlertCircle, Wifi, WifiOff } from "lucide-react";
 import Header from "@/components/Header";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import { caseFormSchema } from "@shared/types";
@@ -21,7 +24,8 @@ export default function NewCase() {
   const [, navigate] = useLocation();
   const { t } = useLanguage();
   const { toast } = useToast();
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const { isOnline, saveOfflineCase, isSyncing, pendingCases, triggerSync } = useOffline();
+  const [showOfflineAlert, setShowOfflineAlert] = useState(!isOnline);
 
   const form = useForm({
     resolver: zodResolver(caseFormSchema),
@@ -50,16 +54,77 @@ export default function NewCase() {
     },
   });
 
+  // Load draft from localStorage on component mount
+  useEffect(() => {
+    const savedDraft = localStorage.getItem('case_draft');
+    if (savedDraft) {
+      try {
+        const draftData = JSON.parse(savedDraft);
+        form.reset(draftData);
+        // Show a toast notification that draft was loaded
+        toast({
+          title: t('newCase.draftLoaded'),
+          description: t('newCase.draftLoadedDesc'),
+        });
+      } catch (error) {
+        console.error('Error loading draft:', error);
+      }
+    }
+  }, []);
+  
+  // Effect to handle online/offline status changes
+  useEffect(() => {
+    setShowOfflineAlert(!isOnline);
+    
+    // If we come back online and have pending cases, notify the user
+    if (isOnline && pendingCases.length > 0) {
+      toast({
+        title: t('sync.pendingCases'),
+        description: t('sync.pendingCasesDesc', { count: pendingCases.length.toString() }),
+        action: (
+          <Button variant="outline" size="sm" onClick={() => triggerSync()}>
+            {t('sync.syncNow')}
+          </Button>
+        ),
+      });
+    }
+  }, [isOnline, pendingCases.length]);
+
   const analyzeCase = useMutation({
     mutationFn: async (data: any) => {
+      if (!isOnline) {
+        // Handle offline case analysis - store locally
+        const offlineCase = saveOfflineCase({
+          ...data,
+          isDraft: false,
+          // In a real implementation with on-device AI, we would call a local model here
+          // For now, we'll just mark it for server-side analysis when online
+          needsAnalysis: true
+        });
+        return offlineCase;
+      }
+      
+      // Online case - send to server
       const res = await apiRequest("POST", "/api/cases", data);
       return res.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
-      navigate(`/case/${data.id}`);
+      
+      if (!isOnline) {
+        // If offline, show success and navigate to home
+        toast({
+          title: t('newCase.caseSavedOffline'),
+          description: t('newCase.caseSavedOfflineDesc'),
+        });
+        navigate("/");
+      } else {
+        // If online, navigate to case details
+        navigate(`/case/${data.id}`);
+      }
     },
     onError: (error) => {
+      // This should only happen in online mode since offline handling is in mutationFn
       toast({
         title: t('common.error'),
         description: error.message || t('newCase.analysisFailed'),
@@ -70,33 +135,44 @@ export default function NewCase() {
 
   const saveDraft = useMutation({
     mutationFn: async (data: any) => {
+      if (!isOnline) {
+        // Handle offline draft - store locally
+        const offlineCase = saveOfflineCase({
+          ...data,
+          isDraft: true
+        });
+        return offlineCase;
+      }
+      
+      // Online draft - send to server
       const res = await apiRequest("POST", "/api/cases/draft", data);
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
-      toast({
-        title: t('newCase.draftSaved'),
-        description: t('newCase.draftSavedDesc'),
-      });
-      navigate("/");
-    },
-    onError: (error) => {
-      // If offline, save to localStorage
-      if (!navigator.onLine) {
-        localStorage.setItem('case_draft', JSON.stringify(form.getValues()));
+    onSuccess: (data) => {
+      // Always save to localStorage as a backup
+      localStorage.setItem('case_draft', JSON.stringify(form.getValues()));
+      
+      if (!isOnline) {
         toast({
           title: t('newCase.offlineDraftSaved'),
           description: t('newCase.offlineDraftSavedDesc'),
         });
-        navigate("/");
       } else {
+        queryClient.invalidateQueries({ queryKey: ['/api/cases'] });
         toast({
-          title: t('common.error'),
-          description: error.message || t('newCase.draftSaveFailed'),
-          variant: "destructive",
+          title: t('newCase.draftSaved'),
+          description: t('newCase.draftSavedDesc'),
         });
       }
+      navigate("/");
+    },
+    onError: (error) => {
+      // This should only happen in online mode since offline handling is in mutationFn
+      toast({
+        title: t('common.error'),
+        description: error.message || t('newCase.draftSaveFailed'),
+        variant: "destructive",
+      });
     },
   });
 
@@ -108,20 +184,6 @@ export default function NewCase() {
     saveDraft.mutate(form.getValues());
   };
 
-  // Check for offline status
-  useState(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  });
-
   return (
     <>
       <Header 
@@ -130,8 +192,51 @@ export default function NewCase() {
         onBackClick={() => navigate("/")}
       />
 
+      {/* Offline notification banner */}
+      {showOfflineAlert && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <WifiOff className="h-5 w-5 text-yellow-400" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                {t('offline.workingOffline')}
+              </p>
+              <p className="text-xs text-yellow-600 mt-1">
+                {t('offline.caseWillSync')}
+              </p>
+            </div>
+            {/* Add counter of pending cases if any */}
+            {pendingCases.length > 0 && (
+              <div className="ml-auto">
+                <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                  {t('offline.pendingCount', { count: pendingCases.length.toString() })}
+                </Badge>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Online status indicator */}
+      {isOnline && isSyncing && (
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <AlertCircle className="h-5 w-5 text-blue-400 animate-pulse" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-blue-700">
+                {t('sync.syncingCases')}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {(analyzeCase.isPending || saveDraft.isPending) && (
-        <LoadingOverlay message={t('newCase.analyzing')} />
+        <LoadingOverlay message={isOnline ? t('newCase.analyzing') : t('newCase.savingOffline')} />
       )}
 
       <Form {...form}>
@@ -421,7 +526,7 @@ export default function NewCase() {
             <Button 
               type="submit" 
               className="w-full"
-              disabled={analyzeCase.isPending || isOffline}
+              disabled={analyzeCase.isPending}
             >
               {t('newCase.analyzeAndClassify')}
             </Button>
