@@ -138,12 +138,14 @@ export const storage = {
   },
   
   async getCaseById(id: number): Promise<Case | null> {
-    return db.query.cases.findFirst({
+    const result = await db.query.cases.findFirst({
       where: eq(schema.cases.id, id),
       with: {
         recommendations: true,
       },
     });
+    
+    return result || null;
   },
   
   async getCasesByHealthWorkerId(healthWorkerId: number): Promise<Case[]> {
@@ -265,13 +267,20 @@ export const storage = {
   
   // Analytics and dashboard
   async getCasesByUrgency(urgency: CaseSeverity): Promise<Case[]> {
-    return db.query.cases.findMany({
-      where: eq(schema.cases.severity, urgency),
+    // Safely construct the query based on the urgency value
+    const query = {
       orderBy: [desc(schema.cases.createdAt)],
       with: {
         recommendations: true,
       },
-    });
+    } as any;
+    
+    // Only add the where clause if urgency is not null or undefined
+    if (urgency) {
+      query.where = eq(schema.cases.severity, urgency);
+    }
+    
+    return db.query.cases.findMany(query);
   },
   
   async getRecentCases(limit: number = 10): Promise<Case[]> {
