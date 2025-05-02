@@ -50,11 +50,25 @@ import {
 
 export default function WebCaseView() {
   const params = useParams();
-  const id = params.id;
-  console.log("WebCaseView params:", params, "id:", id);
+  const id = params?.id;
   const [, navigate] = useLocation();
   const { t } = useLanguage();
   const { toast } = useToast();
+  
+  console.log("WebCaseView params:", params, "id:", id);
+  
+  // Validate we have an ID param and it's a valid number
+  useEffect(() => {
+    if (!id || isNaN(Number(id))) {
+      console.error("Invalid case ID:", id);
+      toast({
+        title: "Error",
+        description: "Invalid case ID. Redirecting to dashboard.",
+        variant: "destructive"
+      });
+      setTimeout(() => navigate("/web-dashboard"), 2000);
+    }
+  }, [id, navigate, toast]);
   
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
