@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
 import { storage } from "../storage";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
@@ -6,6 +6,43 @@ import { User, UserRole } from "../../shared/types";
 
 // Secret for JWT - should be moved to environment variables in production
 const JWT_SECRET = "rutai-web-secret";
+
+// Middleware to verify JWT and set req.user
+export function authenticateJwt(req: Request, res: Response, next: NextFunction) {
+  // Get token from header
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader) {
+    return res.status(401).json({ error: 'Authorization header is missing' });
+  }
+  
+  const token = authHeader.split(' ')[1]; // Authorization: Bearer TOKEN
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Token is missing' });
+  }
+  
+  jwt.verify(token, JWT_SECRET, async (err, decoded: any) => {
+    if (err) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    
+    // Get user from database
+    try {
+      const user = await storage.getUser(decoded.id);
+      if (!user) {
+        return res.status(401).json({ error: 'User not found' });
+      }
+      
+      // Set user in request
+      req.user = user;
+      next();
+    } catch (error) {
+      console.error('Authentication error:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+}
 
 /**
  * Web dashboard authentication routes

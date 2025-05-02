@@ -7,6 +7,41 @@ import { Case, CaseSeverity, User, HealthWorker, Doctor } from "@shared/types";
 
 export const storage = {
   // User management
+  async getUser(id: number): Promise<User | null> {
+    const user = await db.query.users.findFirst({
+      where: eq(schema.users.id, id),
+    });
+    
+    if (!user) return null;
+    
+    // Get the related health worker or doctor
+    if (user.role === "HEALTH_WORKER") {
+      const healthWorker = await db.query.healthWorkers.findFirst({
+        where: eq(schema.healthWorkers.userId, user.id),
+      });
+      
+      if (healthWorker) {
+        return { 
+          ...user, 
+          healthWorker 
+        } as User;
+      }
+    } else if (user.role === "DOCTOR") {
+      const doctor = await db.query.doctors.findFirst({
+        where: eq(schema.doctors.userId, user.id),
+      });
+      
+      if (doctor) {
+        return { 
+          ...user, 
+          doctor 
+        } as User;
+      }
+    }
+    
+    return user as User;
+  },
+  
   async getUserByPhone(phone: string): Promise<User | null> {
     const user = await db.query.users.findFirst({
       where: eq(schema.users.phone, phone),
