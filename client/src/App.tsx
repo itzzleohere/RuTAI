@@ -20,7 +20,7 @@ import { NotificationProvider } from "./hooks/use-notifications";
 import LoadingOverlay from "./components/LoadingOverlay";
 
 function Router() {
-  const { isAuthenticated, loading, checkAuth } = useAuth();
+  const { isAuthenticated, loading, checkAuth, user } = useAuth();
 
   useEffect(() => {
     checkAuth();
@@ -41,6 +41,22 @@ function Router() {
         <Route component={LanguageSelector} /> {/* Catch-all for unauthenticated */}
       </Switch>
     );
+  }
+
+  // Check if the user is a health worker and trying to access web routes
+  const isWebRoute = window.location.pathname.startsWith('/web');
+  const isHealthWorker = user?.role === 'HEALTH_WORKER';
+  
+  // Prevent health workers from accessing web dashboard
+  if (isHealthWorker && isWebRoute) {
+    return <NotFound />;
+  }
+  
+  // Prevent doctors and admins from accessing mobile app routes
+  const isDoctorOrAdmin = user?.role === 'DOCTOR' || user?.role === 'ADMIN';
+  if (isDoctorOrAdmin && !isWebRoute && window.location.pathname !== '/logout') {
+    window.location.href = '/web-dashboard';
+    return <LoadingOverlay message="Redirecting to web dashboard..." />;
   }
 
   return (
