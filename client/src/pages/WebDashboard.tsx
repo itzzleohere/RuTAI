@@ -11,6 +11,7 @@ import { useAuth } from '@/store/auth';
 import NotificationBell from '@/components/NotificationBell';
 import { useLanguage } from '@/lib/i18n';
 import CaseFilterDialog, { FilterOptions } from '@/components/CaseFilterDialog';
+import Analytics from './Analytics';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -394,14 +395,7 @@ export default function WebDashboard() {
         )}
 
         {activeView === 'analytics' && (
-          <div className="bg-white p-6 rounded-lg shadow-sm border">
-            <div className="text-center py-16">
-              <h3 className="text-lg font-medium mb-2">{t('webDashboard.analyticsAndReporting')}</h3>
-              <p className="text-neutral-500">
-                {t('webDashboard.analyticsComingSoon')}
-              </p>
-            </div>
-          </div>
+          <Analytics />
         )}
 
         {activeView === 'healthWorkers' && (
