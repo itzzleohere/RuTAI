@@ -410,13 +410,13 @@ export function webDashboardRoutes() {
       
       // Create medical feedback
       const newFeedback = await db.insert(medicalFeedback).values({
-        caseId,
-        doctorId: doctorId || req.user.id,
-        feedbackType,
-        content,
+        caseId: caseId,
+        userId: doctorId || req.user.id,
+        feedbackType: feedbackType,
+        feedbackText: content,
         actionRequired: actionRequired || false,
-        status: status || 'SENT',
-        createdAt: new Date()
+        createdAt: new Date(),
+        updatedAt: new Date()
       }).returning();
       
       // Send notification to the health worker

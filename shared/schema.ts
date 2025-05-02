@@ -100,6 +100,7 @@ export const cases = pgTable("cases", {
   referredAt: timestamp("referred_at"),
   followUpRequired: boolean("follow_up_required").default(false),
   followUpDate: timestamp("follow_up_date"),
+  emergencyNotes: text("emergency_notes"),
   closedAt: timestamp("closed_at"),
   closedBy: integer("closed_by").references(() => users.id),
   closedReason: text("closed_reason"),
