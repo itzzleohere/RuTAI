@@ -19,9 +19,18 @@ export default function Dashboard() {
     queryKey: ['/api/cases'],
   });
 
+  const getSeverityValue = (severity: CaseSeverity): string => {
+    switch(severity) {
+      case "EMERGENCY": return "emergency";
+      case "MODERATE": return "moderate";
+      case "LOW": return "low";
+      default: return "unknown";
+    }
+  };
+
   const filteredCases = cases?.filter(caseItem => {
     if (activeTab === "all") return true;
-    return caseItem.severity.toLowerCase() === activeTab;
+    return getSeverityValue(caseItem.severity) === activeTab;
   });
 
   const handleCreateNewCase = () => {

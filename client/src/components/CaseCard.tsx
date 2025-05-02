@@ -78,9 +78,12 @@ export default function CaseCard({ caseData, onClick }: CaseCardProps) {
     return vitals.join(', ') || t('caseResult.noVitals');
   };
 
+  // Determine color classes based on severity
+  const colorClass = getSeverityColor(caseData.severity);
+  
   return (
     <div 
-      className={`bg-white p-4 rounded-lg shadow-sm border-l-4 border-${getSeverityColor(caseData.severity)} cursor-pointer hover:shadow-md transition-shadow`}
+      className={`bg-white p-4 rounded-lg shadow-sm border-l-4 border-${colorClass} cursor-pointer hover:shadow-md transition-shadow`}
       onClick={onClick}
     >
       <div className="flex justify-between">
@@ -88,7 +91,7 @@ export default function CaseCard({ caseData, onClick }: CaseCardProps) {
           <h3 className="font-medium">{caseData.patientName}, {caseData.age}{caseData.gender}</h3>
           <p className="text-sm text-neutral-500">{t('caseResult.caseId')}: #{caseData.id}</p>
         </div>
-        <span className={`px-2 py-1 bg-${getSeverityColor(caseData.severity)} text-white text-xs rounded-full flex items-center`}>
+        <span className={`px-2 py-1 bg-${colorClass} text-white text-xs rounded-full flex items-center`}>
           {getSeverityText(caseData.severity)}
         </span>
       </div>

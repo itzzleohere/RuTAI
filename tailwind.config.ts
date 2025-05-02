@@ -44,6 +44,21 @@ export default {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
+        // Custom severity colors
+        emergency: {
+          DEFAULT: "hsl(var(--emergency))",
+          foreground: "hsl(var(--emergency-foreground))",
+          "50": "hsl(var(--emergency) / 0.05)",
+          "100": "hsl(var(--emergency) / 0.1)",
+          "700": "hsl(var(--emergency) / 0.7)",
+        },
+        alert: {
+          DEFAULT: "hsl(var(--alert))",
+          foreground: "hsl(var(--alert-foreground))",
+          "50": "hsl(var(--alert) / 0.05)",
+          "100": "hsl(var(--alert) / 0.1)",
+          "700": "hsl(var(--alert) / 0.7)",
+        },
         chart: {
           "1": "hsl(var(--chart-1))",
           "2": "hsl(var(--chart-2))",

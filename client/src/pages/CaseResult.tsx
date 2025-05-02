@@ -139,6 +139,9 @@ export default function CaseResult() {
     );
   };
 
+  // Get color class based on severity
+  const colorClass = getSeverityColor(caseData.severity);
+
   return (
     <div className="bg-white min-h-screen">
       {(notifyMutation.isPending || saveMutation.isPending) && (
@@ -157,7 +160,7 @@ export default function CaseResult() {
             <h2 className="text-lg font-medium">
               {t('caseResult.patient')}: <span>{caseData.patientName}, {caseData.age}{caseData.gender}</span>
             </h2>
-            <span className={`px-3 py-1 bg-${getSeverityColor(caseData.severity)} text-white text-sm rounded-full`}>
+            <span className={`px-3 py-1 bg-${colorClass} text-white text-sm rounded-full`}>
               {getSeverityText(caseData.severity)}
             </span>
           </div>
@@ -167,8 +170,8 @@ export default function CaseResult() {
         </div>
 
         {/* Urgency Assessment */}
-        <div className={`p-4 rounded-lg bg-${getSeverityColor(caseData.severity)}-50 border border-${getSeverityColor(caseData.severity)}-100 mb-6`}>
-          <h3 className={`font-medium mb-2 text-${getSeverityColor(caseData.severity)}-700`}>
+        <div className={`p-4 rounded-lg bg-${colorClass}-50 border border-${colorClass}-100 mb-6`}>
+          <h3 className={`font-medium mb-2 text-${colorClass}-700`}>
             {getSeverityText(caseData.severity)}: {caseData.assessmentTitle}
           </h3>
           <p className="text-sm text-neutral-700 mb-2">{caseData.assessmentSummary}</p>
@@ -194,7 +197,7 @@ export default function CaseResult() {
             
             {caseData.chiefComplaint && (
               <div className="flex items-center">
-                <AlertCircle className={`text-${getSeverityColor(caseData.severity)} mr-2 h-4 w-4`} />
+                <AlertCircle className={`text-${colorClass} mr-2 h-4 w-4`} />
                 <span className="text-sm">{caseData.chiefComplaint}</span>
               </div>
             )}
