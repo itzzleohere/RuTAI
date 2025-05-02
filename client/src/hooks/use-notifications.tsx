@@ -209,24 +209,74 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     }
   };
   
-  // Initialize WebSocket with notification handlers
-  const { isConnected, registerClient } = useWebSocket({
+  // Keep track of connection status for UI display
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'unstable' | 'disconnected'>('connecting');
+  const [lastReconnectAttempt, setLastReconnectAttempt] = useState<Date | null>(null);
+  
+  // Initialize WebSocket with notification handlers and debug mode for detailed logging
+  const { isConnected, connectionStable, registerClient, reconnect } = useWebSocket({
+    debug: true, // Enable detailed WebSocket logging
     onMessage: handleWebSocketMessage,
     onOpen: () => {
       console.log('WebSocket connection established');
+      setConnectionStatus('connected');
+      
       // Register this client with the user ID if available
       if (user) {
         registerClient(user.id);
       }
-    }
+    },
+    onClose: () => {
+      console.log('WebSocket connection closed');
+      setConnectionStatus('disconnected');
+      
+      // Track reconnection attempts for UI feedback
+      setLastReconnectAttempt(new Date());
+    },
+    onError: (error) => {
+      console.error('WebSocket error:', error);
+      setConnectionStatus('unstable');
+      
+      // Force reconnection after an error
+      setTimeout(() => {
+        if (user) {
+          reconnect();
+        }
+      }, 5000); // Wait 5 seconds before attempting to reconnect
+    },
+    // Increase reconnection attempts
+    reconnectAttempts: 10,
+    // Use exponential backoff for reconnections
+    reconnectInterval: 2000
   });
   
-  // Register client when user changes
+  // Update connection status based on connection stability
+  useEffect(() => {
+    if (isConnected) {
+      if (connectionStable) {
+        setConnectionStatus('connected');
+      } else {
+        setConnectionStatus('unstable');
+      }
+    } else {
+      setConnectionStatus('disconnected');
+    }
+  }, [isConnected, connectionStable]);
+  
+  // Register client when user changes or reconnects
   useEffect(() => {
     if (isConnected && user) {
-      registerClient(user.id);
+      const registered = registerClient(user.id);
+      console.log(`Client registration ${registered ? 'successful' : 'failed'}`);
+      
+      // If registration fails, try to reconnect
+      if (!registered) {
+        setTimeout(() => {
+          reconnect();
+        }, 2000);
+      }
     }
-  }, [isConnected, user, registerClient]);
+  }, [isConnected, user, registerClient, reconnect]);
   
   // Context value
   const contextValue: NotificationContextType = {
