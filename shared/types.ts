@@ -90,7 +90,7 @@ export interface Case {
     pain: boolean;
     shortnessOfBreath: boolean;
     vomiting: boolean;
-  };
+  } | any; // Allow for additional symptom types from DB
   symptomDescription?: string | null;
   additionalNotes?: string | null;
   

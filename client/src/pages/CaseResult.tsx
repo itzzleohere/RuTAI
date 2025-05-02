@@ -113,11 +113,15 @@ export default function CaseResult() {
     }
   };
 
-  const getTimeAgo = (dateString: string) => {
+  const getTimeAgo = (date: string | Date) => {
     try {
-      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+      if (date instanceof Date) {
+        return formatDistanceToNow(date, { addSuffix: true });
+      } else {
+        return formatDistanceToNow(new Date(date), { addSuffix: true });
+      }
     } catch (e) {
-      return dateString;
+      return typeof date === 'string' ? date : date.toISOString();
     }
   };
 
