@@ -63,10 +63,12 @@ function App() {
   
   return (
     <QueryClientProvider client={queryClient}>
-      <div className={`w-full mx-auto min-h-screen ${!isWebRoute ? 'max-w-lg shadow-lg' : ''} relative overflow-hidden`}>
-        <Router />
-      </div>
-      <Toaster />
+      <NotificationProvider>
+        <div className={`w-full mx-auto min-h-screen ${!isWebRoute ? 'max-w-lg shadow-lg' : ''} relative overflow-hidden`}>
+          <Router />
+        </div>
+        <Toaster />
+      </NotificationProvider>
     </QueryClientProvider>
   );
 }

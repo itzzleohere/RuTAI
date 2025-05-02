@@ -109,12 +109,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         break;
         
       case 'severity_updated':
-        const severityMap: Record<CaseSeverity, string> = {
+        // Create a mapping of severity values to display labels
+        const severityMap: Record<string, string> = {
           'EMERGENCY': 'Emergency',
           'MODERATE': 'Moderate',
           'LOW': 'Low',
-          'UNKNOWN': 'Unknown',
-          'null': 'Unknown'
+          'UNKNOWN': 'Unknown'
         };
         
         const severityLabel = severityMap[message.data.newSeverity] || 'Unknown';

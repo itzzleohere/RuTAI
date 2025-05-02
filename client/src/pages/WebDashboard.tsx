@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { Case, CaseSeverity } from '@shared/types';
 import { useAuth } from '@/store/auth';
+import NotificationBell from '@/components/NotificationBell';
 import { useLanguage } from '@/lib/i18n';
 
 export default function WebDashboard() {
@@ -98,6 +99,7 @@ export default function WebDashboard() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            <NotificationBell />
             <div className="flex items-center gap-2 text-sm">
               <span>{user?.name}</span>
               <span className="bg-primary text-white px-2 py-1 rounded-md text-xs">
