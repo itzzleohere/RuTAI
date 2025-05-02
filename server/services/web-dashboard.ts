@@ -196,5 +196,150 @@ export function webDashboardRoutes() {
     }
   });
 
+  /**
+   * Trigger emergency action for a case
+   */
+  router.post('/:id/emergency', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { notes } = req.body;
+      
+      if (!req.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      
+      const caseId = parseInt(id, 10);
+      
+      // Get the case to check if it exists
+      const existingCase = await storage.getCaseById(caseId);
+      if (!existingCase) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+      
+      // Update the case with emergency information
+      const updatedCase = await db.update(cases)
+        .set({
+          status: 'CRITICAL' as CaseStatus,
+          emergencyNotes: notes || null,
+          updatedAt: new Date()
+        })
+        .where(eq(cases.id, caseId))
+        .returning();
+      
+      // Store the emergency action event in the case history
+      const emergencyMessage = notes 
+        ? `EMERGENCY: Case marked as CRITICAL. Notes: ${notes}`
+        : `EMERGENCY: Case marked as CRITICAL`;
+        
+      await db.insert(caseRecommendations).values({
+        caseId: caseId,
+        text: emergencyMessage,
+        createdAt: new Date()
+      });
+      
+      // Send emergency notification to the health worker
+      if (existingCase.healthWorkerId) {
+        const healthWorkerId = String(existingCase.healthWorkerId);
+        const notificationSent = (global as any).notifyClient(healthWorkerId, {
+          type: 'emergency_action',
+          data: {
+            caseId: caseId,
+            message: 'EMERGENCY: Immediate action required for your case',
+            notes: notes,
+            timestamp: new Date()
+          }
+        });
+        
+        console.log(`WebSocket emergency notification ${notificationSent ? 'sent' : 'not sent'} to health worker ${healthWorkerId}`);
+      }
+      
+      // Broadcast emergency to all clients
+      (global as any).notifyClients({
+        type: 'emergency_triggered',
+        data: {
+          caseId: caseId,
+          updatedAt: new Date()
+        }
+      });
+      
+      res.status(200).json(updatedCase[0]);
+    } catch (error) {
+      console.error('Error triggering emergency:', error);
+      res.status(500).json({ error: 'Failed to trigger emergency action' });
+    }
+  });
+
+  /**
+   * Schedule follow-up for a case
+   */
+  router.post('/:id/follow-up', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { followUpDate } = req.body;
+      
+      if (!req.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      
+      if (!followUpDate) {
+        return res.status(400).json({ error: 'Follow-up date is required' });
+      }
+      
+      const caseId = parseInt(id, 10);
+      
+      // Get the case to check if it exists
+      const existingCase = await storage.getCaseById(caseId);
+      if (!existingCase) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+      
+      // Update the case with follow-up date
+      const updatedCase = await db.update(cases)
+        .set({
+          followUpDate: new Date(followUpDate),
+          status: existingCase.status === 'PENDING' ? 'NEEDS_ATTENTION' as CaseStatus : existingCase.status,
+          updatedAt: new Date()
+        })
+        .where(eq(cases.id, caseId))
+        .returning();
+      
+      // Format date to a readable string
+      const date = new Date(followUpDate);
+      const formattedDate = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      // Store the follow-up event in the case history
+      await db.insert(caseRecommendations).values({
+        caseId: caseId,
+        text: `Follow-up scheduled for ${formattedDate}`,
+        createdAt: new Date()
+      });
+      
+      // Send notification to the health worker
+      if (existingCase.healthWorkerId) {
+        const healthWorkerId = String(existingCase.healthWorkerId);
+        const notificationSent = (global as any).notifyClient(healthWorkerId, {
+          type: 'follow_up_scheduled',
+          data: {
+            caseId: caseId,
+            followUpDate: followUpDate,
+            message: `Follow-up scheduled for ${formattedDate}`,
+            timestamp: new Date()
+          }
+        });
+        
+        console.log(`WebSocket follow-up notification ${notificationSent ? 'sent' : 'not sent'} to health worker ${healthWorkerId}`);
+      }
+      
+      res.status(200).json(updatedCase[0]);
+    } catch (error) {
+      console.error('Error scheduling follow-up:', error);
+      res.status(500).json({ error: 'Failed to schedule follow-up' });
+    }
+  });
+
   return router;
 }
