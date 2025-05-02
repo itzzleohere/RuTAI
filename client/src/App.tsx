@@ -10,6 +10,7 @@ import Dashboard from "@/pages/Dashboard";
 import NewCase from "@/pages/NewCase";
 import CaseResult from "@/pages/CaseResult";
 import WebDashboard from "@/pages/WebDashboard";
+import WebCaseView from "@/pages/WebCaseView";
 import Logout from "@/pages/Logout";
 import { queryClient } from "./lib/queryClient";
 import { useAuth } from "./store/auth.tsx";
@@ -47,6 +48,7 @@ function Router() {
       <Route path="/case/new" component={NewCase} />
       <Route path="/case/:id" component={CaseResult} />
       <Route path="/web-dashboard" component={WebDashboard} />
+      <Route path="/web-case/:id" component={WebCaseView} />
       <Route path="/logout" component={Logout} />
       <Route component={NotFound} /> {/* Catch-all for authenticated */}
     </Switch>

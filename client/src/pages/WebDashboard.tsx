@@ -236,7 +236,7 @@ export default function WebDashboard() {
                     <div 
                       key={caseItem.id}
                       className={`bg-white p-6 rounded-lg shadow-sm border-l-4 ${getSeverityClass(caseItem.severity, 'border')} cursor-pointer hover:shadow-md transition-shadow`}
-                      onClick={() => navigate(`/case/${caseItem.id}`)}
+                      onClick={() => navigate(`/web-case/${caseItem.id}`)}
                     >
                       <div className="flex justify-between">
                         <div>
@@ -260,7 +260,7 @@ export default function WebDashboard() {
                           className="text-primary hover:text-primary/80"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/case/${caseItem.id}`);
+                            navigate(`/web-case/${caseItem.id}`);
                           }}
                         >
                           {t('webDashboard.viewDetails')}

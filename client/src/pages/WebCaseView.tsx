@@ -202,7 +202,7 @@ export default function WebCaseView() {
               variant="ghost"
               size="sm"
               className="mr-4"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/web-dashboard")}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
               {t('common.back')}
@@ -586,8 +586,8 @@ export default function WebCaseView() {
             <div className="space-y-2">
               <Label>{t('webCaseView.severityAssessment')}</Label>
               <RadioGroup 
-                defaultValue={caseData.severity} 
-                value={selectedSeverity || undefined} 
+                defaultValue={caseData.severity || "UNKNOWN"} 
+                value={selectedSeverity || ""} 
                 onValueChange={(value) => setSelectedSeverity(value as CaseSeverity)}
               >
                 <div className="flex items-center space-x-2">
