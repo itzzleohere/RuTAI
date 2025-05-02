@@ -192,5 +192,109 @@ export function caseRoutes() {
     }
   });
 
+  // Sync cases that were created while offline
+  router.post("/sync", async (req, res) => {
+    try {
+      const caseData = req.body;
+      
+      // Check if this is a valid case for syncing
+      if (!caseData) {
+        return res.status(400).json({ error: "No case data provided" });
+      }
+
+      // Process the case just like a regular case creation, but with special handling
+      // for offline-created cases
+      
+      // If it's a draft, save it as a draft
+      if (caseData.isDraft) {
+        const now = new Date();
+        const draft = {
+          ...caseData,
+          createdAt: caseData.createdAt || now.toISOString(),
+          updatedAt: now.toISOString(),
+          severity: caseData.severity || "UNKNOWN",
+          // Default to the authenticated user's ID in a real app
+          healthWorkerId: 1, // Placeholder or use req.user.id in real auth system
+        };
+        
+        const newDraft = await storage.createCase(draft);
+        
+        return res.status(201).json({
+          success: true,
+          message: "Draft synchronized successfully",
+          case: newDraft
+        });
+      }
+      
+      // If it has severity and analysis data, it may have been analyzed offline
+      // (in the future with on-device AI models)
+      if (caseData.severity && caseData.assessmentTitle) {
+        const now = new Date();
+        const completeCase = {
+          ...caseData,
+          createdAt: caseData.createdAt || now.toISOString(),
+          updatedAt: now.toISOString(),
+          // Default to the authenticated user's ID in a real app
+          healthWorkerId: 1, // Placeholder or use req.user.id in real auth system
+        };
+        
+        const newCase = await storage.createCase(completeCase);
+        
+        // Store a case recommendation to indicate this was synced from offline
+        await storage.addCaseRecommendation(
+          newCase.id,
+          "This case was created while offline and synced later."
+        );
+        
+        return res.status(201).json({
+          success: true,
+          message: "Case synchronized successfully",
+          case: newCase
+        });
+      }
+      
+      // If it doesn't have analysis data, analyze it now
+      try {
+        // Validate and analyze with AI
+        const validatedData = caseSchema.parse(caseData);
+        const aiResult = await analyzeCase(validatedData);
+        
+        // Merge AI analysis with case data
+        const now = new Date();
+        const completeCase = {
+          ...validatedData,
+          ...aiResult,
+          createdAt: caseData.createdAt || now.toISOString(),
+          updatedAt: now.toISOString(),
+          // Default to the authenticated user's ID in a real app
+          healthWorkerId: 1, // Placeholder or use req.user.id in real auth system
+        };
+        
+        // Save to database
+        const newCase = await storage.createCase(completeCase);
+        
+        // Store a case recommendation to indicate this was synced from offline
+        await storage.addCaseRecommendation(
+          newCase.id,
+          "This case was created while offline and analyzed after syncing."
+        );
+        
+        return res.status(201).json({
+          success: true,
+          message: "Case synchronized and analyzed successfully",
+          case: newCase
+        });
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ errors: error.errors });
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error("Error syncing offline case:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   return router;
 }
