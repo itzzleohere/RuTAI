@@ -130,5 +130,43 @@ export default {
   feature: {
     comingSoon: "Coming Soon",
     comingSoonDesc: "This feature is under development"
+  },
+  notifications: {
+    title: "Notifications",
+    markAllRead: "Mark all as read",
+    noNotifications: "No notifications",
+    connected: "Connected to real-time updates",
+    disconnected: "Waiting for connection...",
+    caseUpdated: "Case updated",
+    caseReviewed: "Case reviewed",
+    severityUpdated: "Severity updated",
+    feedbackAdded: "Feedback added"
+  },
+  webDashboard: {
+    title: "Medical Web Dashboard",
+    searchPatients: "Search patients...",
+    doctor: "Doctor",
+    admin: "Admin",
+    healthWorker: "Health Worker",
+    overview: "Overview",
+    map: "Map View",
+    analytics: "Analytics",
+    healthWorkers: "Health Workers",
+    filters: "Filters",
+    export: "Export",
+    totalCases: "Total Cases",
+    allRegisteredCases: "All registered cases",
+    ofTotalCases: "of total cases",
+    recentCases: "Recent Cases",
+    noChiefComplaint: "No chief complaint recorded",
+    viewDetails: "View Details",
+    viewAllCases: "View All Cases",
+    geographicDistribution: "Geographic Distribution",
+    mapViewComingSoon: "Map view with case distribution coming soon",
+    analyticsAndReporting: "Analytics & Reporting",
+    analyticsComingSoon: "Detailed analytics and reporting coming soon",
+    healthWorkerManagement: "Health Worker Management",
+    healthWorkerManagementComingSoon: "Health worker management features coming soon",
+    noCases: "No cases to display"
   }
 };

@@ -10,6 +10,7 @@ import {
   MessageSquare, RotateCw, Clipboard, Bell,
   ChevronLeft, XCircle, PieChart, Clock
 } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -198,31 +199,34 @@ export default function WebCaseView() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="container mx-auto py-4 px-6">
-          <div className="flex items-center">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mr-4"
-              onClick={() => navigate("/web-dashboard")}
-            >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              {t('common.back')}
-            </Button>
-            <div>
-              <h1 className="text-xl font-semibold flex items-center">
-                {t('webCaseView.caseDetails')} 
-                <span className="text-gray-500 ml-2">#{caseData.id}</span>
-                {reviewCompleted && (
-                  <span className="ml-2 bg-green-100 text-green-800 px-2 py-1 text-xs rounded-full flex items-center">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    {t('webCaseView.reviewed')}
-                  </span>
-                )}
-              </h1>
-              <p className="text-sm text-gray-500">
-                {t('webCaseView.created')} {formatDate(caseData.createdAt)}
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mr-4"
+                onClick={() => navigate("/web-dashboard")}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                {t('common.back')}
+              </Button>
+              <div>
+                <h1 className="text-xl font-semibold flex items-center">
+                  {t('webCaseView.caseDetails')} 
+                  <span className="text-gray-500 ml-2">#{caseData.id}</span>
+                  {reviewCompleted && (
+                    <span className="ml-2 bg-green-100 text-green-800 px-2 py-1 text-xs rounded-full flex items-center">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      {t('webCaseView.reviewed')}
+                    </span>
+                  )}
+                </h1>
+                <p className="text-sm text-gray-500">
+                  {t('webCaseView.created')} {formatDate(caseData.createdAt)}
+                </p>
+              </div>
             </div>
+            <NotificationBell />
           </div>
         </div>
       </header>
