@@ -25,6 +25,11 @@ export default function WebDashboard() {
   const { t } = useLanguage();
   const { user, logout } = useAuth();
   const [location, navigate] = useLocation();
+  
+  // Set page title
+  useEffect(() => {
+    document.title = `RuTAI - ${t('webDashboard.title')}`;
+  }, [t]);
   const [activeView, setActiveView] = useState<string>('overview');
   const [activeTab, setActiveTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
