@@ -1,10 +1,11 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { useEffect } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import LanguageSelector from "@/pages/LanguageSelector";
 import Login from "@/pages/Login";
+import WebLogin from "@/pages/WebLogin";
 import Dashboard from "@/pages/Dashboard";
 import NewCase from "@/pages/NewCase";
 import CaseResult from "@/pages/CaseResult";
@@ -31,6 +32,8 @@ function Router() {
       <Switch>
         <Route path="/" component={LanguageSelector} />
         <Route path="/login" component={Login} />
+        <Route path="/web-login" component={WebLogin} />
+        <Route path="/web-dashboard" component={WebLogin} />
         <Route component={LanguageSelector} /> {/* Catch-all for unauthenticated */}
       </Switch>
     );
@@ -48,9 +51,13 @@ function Router() {
 }
 
 function App() {
+  // Get the current path to apply specific styling for web dashboard routes
+  const [location] = useLocation();
+  const isWebRoute = location.startsWith('/web');
+  
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="w-full mx-auto min-h-screen shadow-lg relative overflow-hidden">
+      <div className={`w-full mx-auto min-h-screen ${!isWebRoute ? 'max-w-lg shadow-lg' : ''} relative overflow-hidden`}>
         <Router />
       </div>
       <Toaster />
