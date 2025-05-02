@@ -104,6 +104,48 @@ export default function Dashboard() {
       <Header title={t('dashboard.title')} showUserMenu />
       
       <div className="p-4 pb-20">
+        {/* Offline notification */}
+        {!isOnline && (
+          <Alert className="mb-4 border-yellow-400 bg-yellow-50">
+            <WifiOff className="h-4 w-4 text-yellow-600" />
+            <AlertTitle className="text-yellow-800">{t('offline.workingOffline')}</AlertTitle>
+            <AlertDescription className="text-yellow-600 text-sm">
+              {t('offline.caseWillSync')}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Sync notification */}
+        {isOnline && pendingCases.length > 0 && (
+          <Alert variant="default" className="mb-4 border-blue-400 bg-blue-50">
+            <div className="flex justify-between items-center w-full">
+              <div className="flex items-start gap-2">
+                <RefreshCw className={`h-4 w-4 text-blue-600 ${isSyncing ? 'animate-spin' : ''}`} />
+                <div>
+                  <AlertTitle className="text-blue-800">
+                    {t('sync.pendingCases')}
+                    <Badge variant="outline" className="ml-2 bg-blue-100 text-blue-800 border-blue-300">
+                      {pendingCases.length}
+                    </Badge>
+                  </AlertTitle>
+                  <AlertDescription className="text-blue-600 text-sm">
+                    {t('sync.pendingCasesDesc', { count: pendingCases.length.toString() })}
+                  </AlertDescription>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="bg-white border-blue-300 text-blue-700 hover:bg-blue-50"
+                onClick={handleSync}
+                disabled={isSyncing}
+              >
+                {isSyncing ? t('sync.syncingCases') : t('sync.syncNow')}
+              </Button>
+            </div>
+          </Alert>
+        )}
+
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-medium">{t('dashboard.patientCases')}</h2>
           <button 
@@ -122,6 +164,14 @@ export default function Dashboard() {
             <TabsTrigger value="emergency">{t('severity.emergency')}</TabsTrigger>
             <TabsTrigger value="moderate">{t('severity.moderate')}</TabsTrigger>
             <TabsTrigger value="low">{t('severity.low')}</TabsTrigger>
+            {pendingCases.length > 0 && (
+              <TabsTrigger value="offline">
+                {t('common.offline')}
+                <Badge variant="outline" className="ml-1 bg-yellow-100 text-yellow-800 border-yellow-300">
+                  {pendingCases.length}
+                </Badge>
+              </TabsTrigger>
+            )}
           </TabsList>
         </Tabs>
 

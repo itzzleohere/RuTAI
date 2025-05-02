@@ -1,9 +1,11 @@
 import { formatDistanceToNow } from "date-fns";
 import { useLanguage } from "@/lib/i18n";
 import { Case, CaseSeverity } from "@shared/types";
+import { WifiOff } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface CaseCardProps {
-  caseData: Case;
+  caseData: Case & { isOffline?: boolean };
   onClick: () => void;
 }
 
@@ -87,12 +89,20 @@ export default function CaseCard({ caseData, onClick }: CaseCardProps) {
   
   return (
     <div 
-      className={`bg-white p-4 rounded-lg shadow-sm border-l-4 border-${colorClass} cursor-pointer hover:shadow-md transition-shadow`}
+      className={`bg-white p-4 rounded-lg shadow-sm border-l-4 border-${colorClass} cursor-pointer hover:shadow-md transition-shadow ${caseData.isOffline ? 'bg-yellow-50' : ''}`}
       onClick={onClick}
     >
       <div className="flex justify-between">
         <div>
-          <h3 className="font-medium">{caseData.patientName}, {caseData.age}{caseData.gender}</h3>
+          <div className="flex items-center gap-1">
+            <h3 className="font-medium">{caseData.patientName}, {caseData.age}{caseData.gender}</h3>
+            {caseData.isOffline && (
+              <Badge variant="outline" className="ml-1 bg-yellow-100 text-yellow-800 border-yellow-300 flex items-center gap-1 px-2 py-0 h-5">
+                <WifiOff className="h-3 w-3" />
+                <span className="text-xs">{t('common.offline')}</span>
+              </Badge>
+            )}
+          </div>
           <p className="text-sm text-neutral-500">{t('caseResult.caseId')}: #{caseData.id}</p>
         </div>
         <span className={`px-2 py-1 bg-${colorClass} text-white text-xs rounded-full flex items-center`}>
