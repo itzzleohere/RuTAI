@@ -52,18 +52,42 @@ export function webDashboardRoutes() {
       }
       
       // If the severity was changed, log it in AI feedback
-      if (correctedSeverity) {
-        const existingCase = await storage.getCaseById(caseId);
-        if (existingCase && existingCase.severity !== correctedSeverity) {
-          await db.insert(aiFeedback).values({
-            caseId,
-            originalSeverity: existingCase.severity,
-            correctedSeverity,
-            feedbackNotes: feedbackNotes || null,
-            userId
+      const existingCase = await storage.getCaseById(caseId);
+      
+      if (correctedSeverity && existingCase && existingCase.severity !== correctedSeverity) {
+        await db.insert(aiFeedback).values({
+          caseId,
+          originalSeverity: existingCase.severity,
+          correctedSeverity,
+          feedbackNotes: feedbackNotes || null,
+          userId
+        });
+        
+        // Notify about severity change
+        if (existingCase.healthWorkerId) {
+          const healthWorkerId = String(existingCase.healthWorkerId);
+          (global as any).notifyClient(healthWorkerId, {
+            type: 'severity_change',
+            data: {
+              caseId: caseId,
+              oldSeverity: existingCase.severity,
+              newSeverity: correctedSeverity,
+              message: 'A medical professional has updated the severity of your case',
+              timestamp: new Date()
+            }
           });
         }
       }
+      
+      // Broadcast case review update to all connected clients
+      (global as any).notifyClients({
+        type: 'case_reviewed',
+        data: {
+          caseId: caseId,
+          reviewedBy: userId,
+          reviewedAt: new Date()
+        }
+      });
       
       res.status(200).json(updatedCase[0]);
     } catch (error) {
@@ -106,6 +130,32 @@ export function webDashboardRoutes() {
         })
         .where(eq(cases.id, caseId))
         .returning();
+      
+      // Send real-time notification via WebSocket
+      if (existingCase.healthWorkerId) {
+        const healthWorkerId = String(existingCase.healthWorkerId);
+        const notificationSent = (global as any).notifyClient(healthWorkerId, {
+          type: 'feedback_received',
+          data: {
+            caseId: caseId,
+            message: 'A medical professional has sent feedback on your case',
+            timestamp: new Date(),
+            feedback: feedbackNotes
+          }
+        });
+        
+        console.log(`WebSocket feedback notification ${notificationSent ? 'sent' : 'not sent'} to health worker ${healthWorkerId}`);
+      }
+      
+      // Broadcast to all clients that feedback was added
+      (global as any).notifyClients({
+        type: 'case_feedback_added',
+        data: {
+          caseId: caseId,
+          updatedAt: new Date(),
+          recommendationId: recommendation.id
+        }
+      });
       
       res.status(200).json({ 
         success: true, 
@@ -152,7 +202,7 @@ export function webDashboardRoutes() {
         .where(eq(cases.id, caseId))
         .returning();
       
-      // Log the severity change in AI feedback
+      // Log the severity change in AI feedback and send notifications
       if (existingCase.severity !== correctedSeverity) {
         await db.insert(aiFeedback).values({
           caseId,
@@ -160,6 +210,34 @@ export function webDashboardRoutes() {
           correctedSeverity,
           feedbackNotes: feedbackNotes || null,
           userId
+        });
+        
+        // Send notification to the health worker
+        if (existingCase.healthWorkerId) {
+          const healthWorkerId = String(existingCase.healthWorkerId);
+          const notificationSent = (global as any).notifyClient(healthWorkerId, {
+            type: 'severity_change',
+            data: {
+              caseId: caseId,
+              oldSeverity: existingCase.severity,
+              newSeverity: correctedSeverity,
+              message: 'A medical professional has updated the severity of your case',
+              timestamp: new Date(),
+              feedbackNotes: feedbackNotes || null
+            }
+          });
+          
+          console.log(`WebSocket severity notification ${notificationSent ? 'sent' : 'not sent'} to health worker ${healthWorkerId}`);
+        }
+        
+        // Broadcast severity change to all clients
+        (global as any).notifyClients({
+          type: 'severity_updated',
+          data: {
+            caseId: caseId,
+            newSeverity: correctedSeverity,
+            updatedAt: new Date()
+          }
         });
       }
       
@@ -183,6 +261,12 @@ export function webDashboardRoutes() {
       
       const caseId = parseInt(id, 10);
       
+      // Get the case to determine the health worker
+      const existingCase = await storage.getCaseById(caseId);
+      if (!existingCase) {
+        return res.status(404).json({ error: 'Case not found' });
+      }
+      
       // Update the case notification status
       const updatedCase = await db.update(cases)
         .set({
@@ -197,8 +281,30 @@ export function webDashboardRoutes() {
         return res.status(404).json({ error: 'Case not found' });
       }
       
-      // In a real implementation, we would send a push notification or SMS to the health worker
-      // For now, we'll just update the database status
+      // Send real-time notification via WebSocket
+      if (existingCase.healthWorkerId) {
+        const healthWorkerId = String(existingCase.healthWorkerId);
+        const notificationSent = (global as any).notifyClient(healthWorkerId, {
+          type: 'case_notification',
+          data: {
+            caseId: caseId,
+            message: 'A medical professional has reviewed your case and sent a notification',
+            timestamp: new Date(),
+            severity: existingCase.severity
+          }
+        });
+        
+        console.log(`WebSocket notification ${notificationSent ? 'sent' : 'not sent'} to health worker ${healthWorkerId}`);
+      }
+      
+      // Broadcast to all clients that a case was updated
+      (global as any).notifyClients({
+        type: 'case_updated',
+        data: {
+          caseId: caseId,
+          updatedAt: new Date()
+        }
+      });
       
       res.status(200).json({ 
         success: true, 

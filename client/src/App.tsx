@@ -16,6 +16,7 @@ import { queryClient } from "./lib/queryClient";
 import { useAuth } from "./store/auth.tsx";
 import { withAuth } from "./store/auth.tsx";
 import { withLanguage } from "./lib/i18n.tsx";
+import { NotificationProvider } from "./hooks/use-notifications";
 import LoadingOverlay from "./components/LoadingOverlay";
 
 function Router() {
