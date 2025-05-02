@@ -157,6 +157,48 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           ...prev
         ]);
         break;
+        
+      case 'doctor_assigned':
+        toast({
+          title: 'Doctor Assigned',
+          description: `A doctor has been assigned to case #${message.data.caseId}`,
+          variant: 'default',
+        });
+        
+        setNotifications(prev => [
+          {
+            id,
+            title: 'Doctor Assigned',
+            description: `A doctor has been assigned to your case #${message.data.caseId}`,
+            type: 'success',
+            timestamp: now,
+            read: false,
+            data: message.data
+          },
+          ...prev
+        ]);
+        break;
+        
+      case 'medical_feedback':
+        toast({
+          title: 'Medical Feedback Received',
+          description: `You have received medical feedback for case #${message.data.caseId}`,
+          variant: message.data.actionRequired ? 'destructive' : 'default',
+        });
+        
+        setNotifications(prev => [
+          {
+            id,
+            title: 'Medical Feedback',
+            description: `Medical feedback received for case #${message.data.caseId}${message.data.actionRequired ? ' - Action Required!' : ''}`,
+            type: message.data.actionRequired ? 'warning' : 'info',
+            timestamp: now,
+            read: false,
+            data: message.data
+          },
+          ...prev
+        ]);
+        break;
     }
   };
   
