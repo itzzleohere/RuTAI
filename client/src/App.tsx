@@ -26,22 +26,23 @@ function Router() {
     return <LoadingOverlay message="Loading application..." />;
   }
 
+  if (!isAuthenticated) {
+    return (
+      <Switch>
+        <Route path="/" component={LanguageSelector} />
+        <Route path="/login" component={Login} />
+        <Route component={LanguageSelector} /> {/* Catch-all for unauthenticated */}
+      </Switch>
+    );
+  }
+
   return (
     <Switch>
-      {!isAuthenticated ? (
-        <>
-          <Route path="/" component={LanguageSelector} />
-          <Route path="/login" component={Login} />
-        </>
-      ) : (
-        <>
-          <Route path="/" component={Dashboard} />
-          <Route path="/case/new" component={NewCase} />
-          <Route path="/case/:id" component={CaseResult} />
-          <Route path="/web-dashboard" component={WebDashboard} />
-        </>
-      )}
-      <Route path="/:rest*" component={NotFound} />
+      <Route path="/" component={Dashboard} />
+      <Route path="/case/new" component={NewCase} />
+      <Route path="/case/:id" component={CaseResult} />
+      <Route path="/web-dashboard" component={WebDashboard} />
+      <Route component={NotFound} /> {/* Catch-all for authenticated */}
     </Switch>
   );
 }
