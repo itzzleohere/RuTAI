@@ -10,6 +10,7 @@ import { Case, CaseSeverity } from '@shared/types';
 import { useAuth } from '@/store/auth';
 import NotificationBell from '@/components/NotificationBell';
 import { useLanguage } from '@/lib/i18n';
+import CaseFilterDialog, { FilterOptions } from '@/components/CaseFilterDialog';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +27,15 @@ export default function WebDashboard() {
   const [activeView, setActiveView] = useState<string>('overview');
   const [activeTab, setActiveTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isFilterDialogOpen, setIsFilterDialogOpen] = useState<boolean>(false);
+  const [filters, setFilters] = useState<FilterOptions>({
+    statusFilter: "all_statuses",
+    assignmentFilter: "all_assignments",
+    reviewFilter: "all_reviews",
+    healthWorkerFilter: "all_health_workers",
+    dateFromFilter: undefined,
+    dateToFilter: undefined
+  });
   
   const handleLogout = () => {
     logout();
@@ -37,18 +47,61 @@ export default function WebDashboard() {
     queryKey: ['/api/cases'],
   });
 
-  // Filter cases based on active tab and search query
+  // Apply all filters to cases
   const filteredCases = cases?.filter(caseItem => {
+    // Filter by tab (severity)
     const matchesTab = activeTab === 'all' || 
       (activeTab === 'emergency' && caseItem.severity === 'EMERGENCY') ||
       (activeTab === 'moderate' && caseItem.severity === 'MODERATE') ||
       (activeTab === 'low' && caseItem.severity === 'LOW');
     
+    // Filter by search query
     const matchesSearch = searchQuery === '' || 
       caseItem.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       caseItem.chiefComplaint?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    return matchesTab && matchesSearch;
+    // Filter by status
+    const matchesStatus = 
+      filters.statusFilter === 'all_statuses' || 
+      caseItem.status === filters.statusFilter;
+    
+    // Filter by assignment status
+    const matchesAssignment = 
+      filters.assignmentFilter === 'all_assignments' || 
+      (filters.assignmentFilter === 'assigned' && caseItem.assignedDoctorId !== null) ||
+      (filters.assignmentFilter === 'unassigned' && caseItem.assignedDoctorId === null);
+    
+    // Filter by review status
+    const matchesReview = 
+      filters.reviewFilter === 'all_reviews' || 
+      (filters.reviewFilter === 'reviewed' && caseItem.reviewed === true) ||
+      (filters.reviewFilter === 'not_reviewed' && caseItem.reviewed !== true);
+    
+    // Filter by health worker
+    const matchesHealthWorker = 
+      filters.healthWorkerFilter === 'all_health_workers' || 
+      (caseItem.healthWorkerId && caseItem.healthWorkerId.toString() === filters.healthWorkerFilter);
+    
+    // Filter by date range
+    let matchesDateRange = true;
+    if (filters.dateFromFilter) {
+      const caseDate = new Date(caseItem.createdAt);
+      const fromDate = new Date(filters.dateFromFilter);
+      // Set time to beginning of day
+      fromDate.setHours(0, 0, 0, 0);
+      matchesDateRange = caseDate >= fromDate;
+    }
+    
+    if (matchesDateRange && filters.dateToFilter) {
+      const caseDate = new Date(caseItem.createdAt);
+      const toDate = new Date(filters.dateToFilter);
+      // Set time to end of day
+      toDate.setHours(23, 59, 59, 999);
+      matchesDateRange = caseDate <= toDate;
+    }
+    
+    return matchesTab && matchesSearch && matchesStatus && 
+           matchesAssignment && matchesReview && matchesHealthWorker && matchesDateRange;
   });
 
   // Calculate summary stats
@@ -164,7 +217,7 @@ export default function WebDashboard() {
           </Tabs>
 
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={() => setIsFilterDialogOpen(true)}>
               <Filter className="mr-2 h-4 w-4" />
               {t('webDashboard.filters')}
             </Button>
@@ -173,6 +226,17 @@ export default function WebDashboard() {
               {t('webDashboard.export')}
             </Button>
           </div>
+          
+          {/* Case Filter Dialog */}
+          <CaseFilterDialog 
+            isOpen={isFilterDialogOpen}
+            onClose={() => setIsFilterDialogOpen(false)}
+            onApplyFilters={(newFilters) => {
+              setFilters(newFilters);
+              setIsFilterDialogOpen(false);
+            }}
+            currentFilters={filters}
+          />
         </div>
 
         {activeView === 'overview' && (
