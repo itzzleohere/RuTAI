@@ -65,7 +65,7 @@ function Router() {
       <Route path="/web-case/:id">
         {(params) => {
           console.log("Route matched for /web-case/:id with params:", params);
-          return <WebCaseView />;
+          return <WebCaseView caseId={params.id} key={params.id} />;
         }}
       </Route>
       <Route path="/web-dashboard" component={WebDashboard} />

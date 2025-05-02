@@ -48,9 +48,14 @@ import {
   FeedbackType, MedicalFeedback, User, PrimaryHealthCenter 
 } from "@shared/types";
 
-export default function WebCaseView() {
+interface WebCaseViewProps {
+  caseId?: string;
+}
+
+export default function WebCaseView({ caseId }: WebCaseViewProps) {
   const params = useParams();
-  const id = params?.id;
+  // Use the explicitly passed caseId prop if available, otherwise fall back to the route parameter
+  const id = caseId || params?.id;
   const [, navigate] = useLocation();
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -132,7 +137,7 @@ export default function WebCaseView() {
   };
 
   // Fetch case data
-  const { data: caseDataRaw, isLoading, error } = useQuery<any, Error>({
+  const { data: caseDataRaw, isLoading, error } = useQuery<any>({
     queryKey: [`/api/cases/${id}`],
     enabled: !!id, // Only run query if id exists
     retry: 3
@@ -439,12 +444,23 @@ export default function WebCaseView() {
   
   // Handle error state
   if (error) {
+    // Create a formatted error message from any type of error
+    const errorMessage = typeof error === 'object' && error !== null && 'message' in error 
+      ? (error as {message: string}).message 
+      : t('webCaseView.failedToLoadCase');
+      
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-gray-50 p-4">
+        <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
         <h1 className="text-2xl font-bold text-red-600 mb-4">{t('common.error')}</h1>
-        <p className="mb-6 text-center">Error loading case data. The case may not exist or you might not have permission to view it.</p>
+        <p className="mb-6 text-center">
+          {errorMessage}
+          <br />
+          {t('webCaseView.caseAccessError')}
+        </p>
         <Button onClick={() => navigate('/web-dashboard')}>
-          Return to Dashboard
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          {t('common.backToDashboard')}
         </Button>
       </div>
     );
@@ -549,6 +565,8 @@ export default function WebCaseView() {
       </ul>
     );
   };
+  
+  // We already have separate handlers for these below - removing duplicates
 
   return (
     <div className="bg-gray-50 min-h-screen">
