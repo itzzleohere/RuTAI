@@ -94,10 +94,8 @@ export const cases = pgTable("cases", {
   // Enhanced case management
   status: text("status", { enum: ["PENDING", "STABLE", "NEEDS_ATTENTION", "CRITICAL", "CLOSED"] }).default("PENDING"),
   assignedDoctorId: integer("assigned_doctor_id").references(() => users.id),
-  // Let's omit assigned_at column since it doesn't exist in the DB yet
-  assignedBy: integer("assigned_by").references(() => users.id),
+  // Let's omit columns that don't exist in the DB yet
   referredToCenterId: integer("referred_to_center_id").references(() => primaryHealthCenters.id),
-  // Let's omit referred_at column since it might not exist in the DB yet
   followUpRequired: boolean("follow_up_required").default(false),
   followUpDate: timestamp("follow_up_date"),
   emergencyNotes: text("emergency_notes"),
@@ -198,10 +196,6 @@ export const caseRelations = relations(cases, ({ one, many }) => ({
   medicalFeedback: many(medicalFeedback),
   assignedDoctor: one(users, {
     fields: [cases.assignedDoctorId],
-    references: [users.id],
-  }),
-  assignedByUser: one(users, {
-    fields: [cases.assignedBy],
     references: [users.id],
   }),
   referredToCenter: one(primaryHealthCenters, {
