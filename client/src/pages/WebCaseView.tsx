@@ -438,7 +438,7 @@ export default function WebCaseView() {
               </Button>
               <div>
                 <h1 className="text-xl font-semibold flex items-center">
-                  {t('webCaseView.caseDetails')} 
+                  {t('webCaseView.title')} 
                   <span className="text-gray-500 ml-2">#{caseData.id}</span>
                   {reviewCompleted && (
                     <span className="ml-2 bg-green-100 text-green-800 px-2 py-1 text-xs rounded-full flex items-center">
