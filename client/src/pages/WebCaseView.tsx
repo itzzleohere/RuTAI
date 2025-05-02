@@ -54,18 +54,6 @@ export default function WebCaseView() {
   const { t } = useLanguage();
   const { toast } = useToast();
   
-  // Set page title with case ID
-  useEffect(() => {
-    document.title = `RuTAI - ${t('webCaseView.title')} #${id}`;
-  }, [t, id]);
-  
-  // Update title with patient name once data is loaded
-  useEffect(() => {
-    if (caseData && caseData.patientName) {
-      document.title = `RuTAI - ${caseData.patientName} - ${t('webCaseView.title')}`;
-    }
-  }, [caseData, t]);
-  
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
@@ -93,6 +81,18 @@ export default function WebCaseView() {
   const { data: caseData, isLoading } = useQuery<Case>({
     queryKey: [`/api/cases/${id}`],
   });
+  
+  // Set initial page title with case ID
+  useEffect(() => {
+    document.title = `RuTAI - ${t('webCaseView.title')} #${id}`;
+  }, [t, id]);
+  
+  // Update title with patient name once data is loaded
+  useEffect(() => {
+    if (caseData && caseData.patientName) {
+      document.title = `RuTAI - ${caseData.patientName} - ${t('webCaseView.title')}`;
+    }
+  }, [caseData, t]);
 
   // Set initial severity based on case data
   useEffect(() => {
